@@ -13,34 +13,34 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 5 56 18v28L32 59 8 46V18ZM8 18l24 14 24-14M32 32v27M32 5v27' fill='none' stroke='%237ce8ee' stroke-width='4'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./workbench/styles.css?v=0.3.0" />
-    <link rel="stylesheet" href="./workbench/strategy.css?v=0.3.0" />
+    <link rel="stylesheet" href="./workbench/styles.css?v=0.3.1" />
+    <link rel="stylesheet" href="./workbench/strategy.css?v=0.3.1" />
     <script type="importmap">
       {
         "imports": {
-          "#workbench/about": "./workbench/about.mjs?v=0.3.0",
-          "#workbench/app": "./workbench/app.mjs?v=0.3.0",
-          "#workbench/backup-settings": "./workbench/backup-settings.mjs?v=0.3.0",
-          "#workbench/dom": "./workbench/dom.mjs?v=0.3.0",
-          "#workbench/file-backups": "./workbench/file-backups.mjs?v=0.3.0",
-          "#workbench/focus-state": "./workbench/focus-state.mjs?v=0.3.0",
-          "#workbench/layout": "./workbench/layout.mjs?v=0.3.0",
-          "#workbench/limits": "./workbench/limits.mjs?v=0.3.0",
-          "#workbench/record-editor": "./workbench/record-editor.mjs?v=0.3.0",
-          "#workbench/storage": "./workbench/storage.mjs?v=0.3.0",
-          "#workbench/strategy-common": "./workbench/strategy-common.mjs?v=0.3.0",
-          "#workbench/strategy-editor": "./workbench/strategy-editor.mjs?v=0.3.0",
-          "#workbench/strategy-ui": "./workbench/strategy-ui.mjs?v=0.3.0",
-          "#workbench/strategy": "./workbench/strategy.mjs?v=0.3.0",
-          "#workbench/tools": "./workbench/tools.mjs?v=0.3.0",
-          "#workbench/update-preview": "./workbench/update-preview.mjs?v=0.3.0",
-          "#workbench/workspace-v1": "./workbench/workspace-v1.mjs?v=0.3.0",
-          "#workbench/workspace-views": "./workbench/workspace-views.mjs?v=0.3.0",
-          "#workbench/workspace": "./workbench/workspace.mjs?v=0.3.0"
+          "#workbench/about": "./workbench/about.mjs?v=0.3.1",
+          "#workbench/app": "./workbench/app.mjs?v=0.3.1",
+          "#workbench/backup-settings": "./workbench/backup-settings.mjs?v=0.3.1",
+          "#workbench/dom": "./workbench/dom.mjs?v=0.3.1",
+          "#workbench/file-backups": "./workbench/file-backups.mjs?v=0.3.1",
+          "#workbench/focus-state": "./workbench/focus-state.mjs?v=0.3.1",
+          "#workbench/layout": "./workbench/layout.mjs?v=0.3.1",
+          "#workbench/limits": "./workbench/limits.mjs?v=0.3.1",
+          "#workbench/record-editor": "./workbench/record-editor.mjs?v=0.3.1",
+          "#workbench/storage": "./workbench/storage.mjs?v=0.3.1",
+          "#workbench/strategy-common": "./workbench/strategy-common.mjs?v=0.3.1",
+          "#workbench/strategy-editor": "./workbench/strategy-editor.mjs?v=0.3.1",
+          "#workbench/strategy-ui": "./workbench/strategy-ui.mjs?v=0.3.1",
+          "#workbench/strategy": "./workbench/strategy.mjs?v=0.3.1",
+          "#workbench/tools": "./workbench/tools.mjs?v=0.3.1",
+          "#workbench/update-preview": "./workbench/update-preview.mjs?v=0.3.1",
+          "#workbench/workspace-v1": "./workbench/workspace-v1.mjs?v=0.3.1",
+          "#workbench/workspace-views": "./workbench/workspace-views.mjs?v=0.3.1",
+          "#workbench/workspace": "./workbench/workspace.mjs?v=0.3.1"
         }
       }
     </script>
-    <script type="module" src="./workbench/app.mjs?v=0.3.0"></script>
+    <script type="module" src="./workbench/app.mjs?v=0.3.1"></script>
   </head>
   <body>
     <a href="#main" class="skip-link">跳到工作区</a>
@@ -61,9 +61,6 @@
           </button>
           <button data-view="tasks">
             <span data-icon="check"></span>待办事项
-          </button>
-          <button data-view="notes">
-            <span data-icon="note"></span>随手记
           </button>
           <button data-view="lab">
             <span data-icon="flask"></span>实验空间
@@ -265,36 +262,6 @@
                 </button>
               </form>
             </section>
-            <section
-              class="panel notes-panel"
-              id="notes-panel"
-              aria-labelledby="notes-heading"
-            >
-              <div class="section-heading">
-                <h2 id="notes-heading"><span data-icon="note"></span>随手记</h2>
-                <span class="mini-label" id="note-count"></span>
-              </div>
-              <form class="note-composer" id="note-form">
-                <textarea
-                  id="note-text"
-                  maxlength="10000"
-                  aria-label="随手记内容"
-                  placeholder="先留住这个想法…"
-                  required
-                ></textarea>
-                <div class="composer-bottom">
-                  <select
-                    id="note-direction"
-                    class="compact-select"
-                    aria-label="随手记关联方向"
-                  ></select
-                  ><button class="button small primary" id="note-save">
-                    记下来 <span data-icon="return"></span>
-                  </button>
-                </div>
-              </form>
-              <div id="notes-list"></div>
-            </section>
           </div>
         </div>
         <section class="panel tool-dock" id="tool-dock" aria-label="网站与工具">
@@ -330,18 +297,50 @@
             </div>
           </div>
         </section>
-        <section class="panel lab-library" id="lab-library" hidden>
-          <div class="section-heading">
-            <h2><span data-icon="flask"></span>我的实验</h2>
-            <button class="button small" data-new="experiments">
-              <span data-icon="plus"></span>记录实验
-            </button>
-          </div>
-          <p class="section-description">
-            给小工具一个生长的地方。记录构想、跟进开发，或打开已完成的工具。
-          </p>
-          <div class="experiment-list" id="experiment-list"></div>
-        </section>
+        <div class="lab-grid" id="lab-grid" hidden>
+          <section class="panel lab-library" id="lab-library" hidden>
+            <div class="section-heading">
+              <h2><span data-icon="flask"></span>我的实验</h2>
+              <button class="button small" data-new="experiments">
+                <span data-icon="plus"></span>记录实验
+              </button>
+            </div>
+            <p class="section-description">
+              给小工具一个生长的地方。记录构想、跟进开发，或打开已完成的工具。
+            </p>
+            <div class="experiment-list" id="experiment-list"></div>
+          </section>
+          <section
+            class="panel notes-panel"
+            id="notes-panel"
+            aria-labelledby="notes-heading"
+          >
+            <div class="section-heading">
+              <h2 id="notes-heading"><span data-icon="note"></span>随手记</h2>
+              <span class="mini-label" id="note-count"></span>
+            </div>
+            <form class="note-composer" id="note-form">
+              <textarea
+                id="note-text"
+                maxlength="10000"
+                aria-label="随手记内容"
+                placeholder="先留住这个想法…"
+                required
+              ></textarea>
+              <div class="composer-bottom">
+                <select
+                  id="note-direction"
+                  class="compact-select"
+                  aria-label="随手记关联方向"
+                ></select
+                ><button class="button small primary" id="note-save">
+                  记下来 <span data-icon="return"></span>
+                </button>
+              </div>
+            </form>
+            <div id="notes-list"></div>
+          </section>
+        </div>
         <footer class="page-footer">
           <span
             ><span class="live-dot"></span>工作副本在浏览器 · 可连接独立文件备份

@@ -109,15 +109,10 @@ const viewInfo = {
     "从一件重要的事开始。",
     "少一点悬而未决，多一点实际行动。",
   ],
-  notes: [
-    "随手记",
-    "先留住，再慢慢想。",
-    "一闪而过的灵感、问题和收获，都值得有个位置。",
-  ],
   lab: [
     "实验空间",
     "把想法，做成小东西。",
-    "从一个小问题开始，做自己真正用得上的工具。",
+    "把随手记和小工具放在一起，留住想法，再动手验证。",
   ],
 };
 
@@ -357,6 +352,7 @@ function render() {
 }
 
 function setView(next) {
+  if (next === "notes") next = "lab";
   view = next;
   const [name, title, subtitle] = viewInfo[next];
   $("view-name").textContent = name;
@@ -370,9 +366,10 @@ function setView(next) {
   $("overview-grid").hidden = ["lab", "archives"].includes(next);
   $("overview-grid").classList.toggle("single-column", next !== "overview");
   $("learning-workspace").hidden = !["overview", "learning"].includes(next);
-  $("right-column").hidden = !["overview", "tasks", "notes"].includes(next);
+  $("right-column").hidden = !["overview", "tasks"].includes(next);
   $("tasks-panel").hidden = !["overview", "tasks"].includes(next);
-  $("notes-panel").hidden = !["overview", "notes"].includes(next);
+  $("lab-grid").hidden = next !== "lab";
+  $("notes-panel").hidden = next !== "lab";
   render();
 }
 
@@ -547,10 +544,7 @@ document
   .forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
 $("open-lab").addEventListener("click", () => setView("lab"));
 $("quick-add").addEventListener("click", () =>
-  openRecord(
-    { notes: "notes", learning: "projects", lab: "experiments" }[view] ||
-      "tasks",
-  ),
+  openRecord({ learning: "projects", lab: "experiments" }[view] || "tasks"),
 );
 
 $("task-filter").addEventListener("change", render);
@@ -666,14 +660,14 @@ recordEditor = initRecordEditor({
       direction = "";
     query = "";
     $("global-search").value = "";
-    if (kind === "experiments") setView("lab");
+    if (["experiments", "notes"].includes(kind)) setView("lab");
     else if (view !== "overview")
       setView(
         {
           tasks: "tasks",
           projects: "learning",
           plans: "learning",
-          notes: "notes",
+          notes: "lab",
           sites: view,
         }[kind],
       );

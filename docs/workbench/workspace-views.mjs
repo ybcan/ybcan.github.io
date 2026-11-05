@@ -282,7 +282,7 @@ export function initWorkspaceViews(ctx) {
           : "不必想清楚再记录，一句话也可以。",
       );
     const limit =
-      ctx.view() === "notes" || notesExpanded || ctx.query() ? notes.length : 3;
+      ctx.view() === "lab" || notesExpanded || ctx.query() ? notes.length : 3;
     for (const note of notes.slice(0, limit)) {
       const item = el("article", "note-item"),
         symbol = el("div", "note-symbol");
@@ -411,7 +411,7 @@ export function initWorkspaceViews(ctx) {
       )
         renderTasks();
       if (
-        ["overview", "notes"].includes(view) &&
+        view === "lab" &&
         !$("notes-panel").classList.contains("is-collapsed")
       )
         renderNotes();

@@ -47,6 +47,10 @@ class CockpitTests(unittest.TestCase):
         self.assertEqual(self.errors, [])
         self.context.close()
 
+    def open_notes(self, page=None):
+        page = page or self.page
+        page.locator('[data-view="lab"]').click()
+
     def add_record(self, kind, title, direction='', body=None, steps=None):
         self.page.locator('#quick-add').click()
         self.page.locator('#record-kind').select_option(kind)
@@ -65,19 +69,24 @@ class CockpitTests(unittest.TestCase):
         self.page.locator('#task-text').fill('浏览器测试待办')
         self.page.get_by_role('button', name='添加待办', exact=True).click()
         self.page.get_by_role('checkbox', name='完成待办：浏览器测试待办', exact=True).click()
+        self.page.locator('[data-view=\"overview\"]').click()
         self.page.locator('#task-filter').select_option('done')
         self.assertTrue(self.page.get_by_role('checkbox', name='完成待办：浏览器测试待办').is_checked())
         self.add_record('projects', '浏览器测试学习', 'learn', steps='理解\n动手')
         project = self.page.locator('.project').filter(has_text='浏览器测试学习')
         project.get_by_role('checkbox', name='理解', exact=True).click()
         expect(project).to_contain_text('1 / 2')
+        self.open_notes()
         self.page.locator('#note-text').fill('浏览器测试想法')
         self.page.locator('#note-save').click()
+        self.open_notes()
         expect(self.page.locator('#notes-list')).to_contain_text('浏览器测试想法')
         self.page.reload()
         self.page.locator('html[data-ready="true"]').wait_for()
+        self.open_notes()
         self.assertIn('浏览器测试想法', self.page.locator('#notes-list').inner_text())
         self.assertIn('1 / 2', self.page.locator('.project').filter(has_text='浏览器测试学习').inner_text())
+        self.page.locator('[data-view=\"overview\"]').click()
         self.page.locator('#task-filter').select_option('done')
         self.assertTrue(self.page.get_by_role('checkbox', name='完成待办：浏览器测试待办').is_checked())
 
@@ -101,12 +110,15 @@ class CockpitTests(unittest.TestCase):
         hostile = '<img src=x onerror="window.attacked=1">'
         self.add_record('notes', hostile, 'govern')
         self.page.locator('[data-direction="govern"]').first.click()
+        self.open_notes()
         self.assertIn(hostile, self.page.locator('#notes-list').inner_text())
         self.assertEqual(self.page.locator('#notes-list img').count(), 0)
         self.assertIsNone(self.page.evaluate('window.attacked'))
         self.page.locator('#global-search').fill('没有这种记录')
+        self.open_notes()
         self.assertNotIn(hostile, self.page.locator('#notes-list').inner_text())
         self.page.locator('#clear-filters').click()
+        self.open_notes()
         self.assertIn(hostile, self.page.locator('#notes-list').inner_text())
 
     def test_backup_validation_and_explicit_replacement(self):
@@ -124,6 +136,7 @@ class CockpitTests(unittest.TestCase):
         expect(self.page.locator('#confirm-dialog')).to_be_visible()
         self.page.locator('#confirm-cancel').click()
         self.page.locator('#settings-close').click()
+        self.open_notes()
         self.assertIn('导出后记录', self.page.locator('#notes-list').inner_text())
         self.page.locator('#settings-button').click()
         self.page.locator('#import-file').set_input_files({'name': 'valid.json', 'mimeType': 'application/json', 'buffer': backup})
@@ -131,7 +144,9 @@ class CockpitTests(unittest.TestCase):
         self.page.locator('#settings-close').click()
         self.page.reload()
         self.page.locator('html[data-ready="true"]').wait_for()
+        self.open_notes()
         self.assertIn('导出前记录', self.page.locator('#notes-list').inner_text())
+        self.open_notes()
         self.assertNotIn('导出后记录', self.page.locator('#notes-list').inner_text())
 
     def test_clear_examples_keeps_personal_work(self):
@@ -140,7 +155,9 @@ class CockpitTests(unittest.TestCase):
         self.page.locator('#clear-examples').click()
         self.page.locator('#confirm-accept').click()
         self.page.locator('#settings-close').click()
+        self.open_notes()
         self.assertIn('清理后保留我', self.page.locator('#notes-list').inner_text())
+        self.page.locator('[data-view="learning"]').click()
         self.assertEqual(self.page.locator('.project').count(), 0)
 
     def test_imported_website_identifiers_cannot_break_rendering(self):
@@ -163,14 +180,19 @@ class CockpitTests(unittest.TestCase):
     def test_two_open_tabs_preserve_independent_additions(self):
         other = self.context.new_page()
         other.goto(self.url)
+        self.open_notes()
         self.page.locator('#note-text').fill('第一个标签页的记录')
         self.page.locator('#note-save').click()
+        self.open_notes(other)
         other.locator('#note-text').fill('第二个标签页的记录')
         other.locator('#note-save').click()
+        self.open_notes(other)
         expect(other.locator('#notes-list')).to_contain_text('第二个标签页的记录')
         self.page.reload()
         self.page.locator('html[data-ready="true"]').wait_for()
+        self.open_notes()
         self.assertIn('第一个标签页的记录', self.page.locator('#notes-list').inner_text())
+        self.open_notes()
         self.assertIn('第二个标签页的记录', self.page.locator('#notes-list').inner_text())
         other.close()
 
@@ -222,8 +244,10 @@ class CockpitTests(unittest.TestCase):
 
     def test_failed_storage_keeps_notes_visible_and_exportable(self):
         self.page.evaluate("() => { IDBObjectStore.prototype.put = function() { throw new DOMException('quota', 'QuotaExceededError'); }; }")
+        self.open_notes()
         self.page.locator('#note-text').fill('存储失败时也应可导出的记录')
         self.page.locator('#note-save').click()
+        self.open_notes()
         expect(self.page.locator('#notes-list')).to_contain_text('存储失败时也应可导出的记录')
         self.assertIn('刷新或关闭前导出', self.page.locator('#storage-alert').inner_text())
         self.page.locator('#settings-button').click()
@@ -257,7 +281,9 @@ class CockpitTests(unittest.TestCase):
         for width in [1536, 1280, 1024, 768, 390]:
             self.page.set_viewport_size({'width': width, 'height': 1100})
             self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'overflow at {width}')
-            self.page.get_by_role('button', name='随手记', exact=True).first.click()
+            self.page.locator('[data-view="lab"]').click()
+            self.assertEqual(self.page.locator('.primary-nav [data-view="notes"]').count(), 0)
+            expect(self.page.locator('#lab-grid #notes-panel')).to_be_visible()
             self.assertTrue(self.page.locator('#note-text').is_visible())
             self.page.get_by_role('button', name='总览', exact=True).first.click()
             if width in [1536, 390]:

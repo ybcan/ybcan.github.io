@@ -648,3 +648,22 @@ input[type="checkbox"] {
   gap: 15px;
   flex-wrap: wrap;
 }
+
+.lab-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 20px;
+}
+.lab-grid .lab-library {
+  margin: 0;
+}
+.lab-grid .notes-panel {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .lab-grid {
+    grid-template-columns: 1fr;
+  }
+}

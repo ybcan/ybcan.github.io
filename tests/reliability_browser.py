@@ -53,7 +53,7 @@ class ReliabilityTests(strategy_browser.StrategyTests):
 
     def test_about_has_release_and_license_information(self):
         self.page.locator('#about-button').click()
-        expect(self.page.locator('#about-dialog')).to_contain_text('0.3.0')
+        expect(self.page.locator('#about-dialog')).to_contain_text('0.3.1')
         expect(self.page.locator('#about-dialog')).to_contain_text('ybcan')
         expect(self.page.get_by_role('link',name='MIT 许可证')).to_be_visible()
 
@@ -72,11 +72,14 @@ class ReliabilityTests(strategy_browser.StrategyTests):
         self.page.locator('#import-file').set_input_files({'name':'before.json','mimeType':'application/json','buffer':backup})
         expect(self.page.locator('#confirm-dialog')).to_be_visible()
         other=self.context.new_page();other.goto(self.url);other.locator('html[data-ready="true"]').wait_for()
+        self.open_notes(other)
         other.locator('#note-text').fill('确认期间的新记录');other.locator('#note-save').click()
+        self.open_notes(other)
         expect(other.locator('#notes-list')).to_contain_text('确认期间的新记录')
         self.page.locator('#confirm-accept').click()
         expect(self.page.locator('#settings-message')).to_contain_text('已有变化')
         self.page.locator('#settings-close').click();self.page.reload();self.page.locator('html[data-ready="true"]').wait_for()
+        self.open_notes()
         expect(self.page.locator('#notes-list')).to_contain_text('确认期间的新记录')
         other.close()
 
@@ -102,7 +105,9 @@ class ReliabilityTests(strategy_browser.StrategyTests):
         with self.page.expect_download() as download:self.page.locator('#export-button').click()
         raw=__import__('pathlib').Path(download.value.path()).read_bytes()
         other=self.context.new_page();other.goto(self.url);other.locator('html[data-ready="true"]').wait_for()
+        self.open_notes(other)
         other.locator('#note-text').fill('恢复前其他标签页的重要修改');other.locator('#note-save').click()
+        self.open_notes(other)
         expect(other.locator('#notes-list')).to_contain_text('恢复前其他标签页的重要修改')
         self.page.locator('#import-file').set_input_files({'name':'old.json','mimeType':'application/json','buffer':raw})
         self.page.locator('#confirm-accept').click()

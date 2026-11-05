@@ -27,6 +27,7 @@ export const archiveNames = {
 };
 export const labels = {
   title: "名称",
+  parentRef: "归属位置",
   summary: "概述",
   nextStep: "下一步",
   execution: "执行状态",

@@ -158,6 +158,7 @@ class CockpitTests(unittest.TestCase):
         self.open_notes()
         self.assertIn('清理后保留我', self.page.locator('#notes-list').inner_text())
         self.page.locator('[data-view="learning"]').click()
+        self.page.locator("#learning-mode-list").click()
         self.assertEqual(self.page.locator('.project').count(), 0)
 
     def test_imported_website_identifiers_cannot_break_rendering(self):

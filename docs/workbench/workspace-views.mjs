@@ -399,7 +399,8 @@ export function initWorkspaceViews(ctx) {
     render() {
       const view = ctx.view();
       if (
-        ["overview", "learning"].includes(view) &&
+        (view === "overview" ||
+          (view === "learning" && ctx.learningMode() === "list")) &&
         !$("learning-workspace").classList.contains("is-collapsed")
       ) {
         renderProjects();

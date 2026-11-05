@@ -40,6 +40,23 @@ export function initUpdatePreview(ctx, common) {
       }
     }
   }
+  function fieldValue(name, value) {
+    if (name === "parentRef" && value) {
+      const record =
+        state()[value.collection]?.find((r) => r.id === value.id) ||
+        preview.changes.find(
+          (r) => r.collection === value.collection && r.id === value.id,
+        )?.incoming;
+      return (
+        ({ goals: "目标", projects: "事项", plans: "阶段计划" }[
+          value.collection
+        ] || "归属") +
+        " · " +
+        (record?.title || value.id)
+      );
+    }
+    return display(value);
+  }
   function showPreview() {
     update.replaceChildren();
     const header = el("div", "dialog-header"),
@@ -137,7 +154,7 @@ export function initUpdatePreview(ctx, common) {
             (Array.isArray(value) && !value.length)
           )
             continue;
-          description(details, labels[key] || key, display(value));
+          description(details, labels[key] || key, fieldValue(key, value));
         }
         wrap.append(details);
       }
@@ -154,8 +171,8 @@ export function initUpdatePreview(ctx, common) {
               (labels[f.name] || f.name) +
                 (f.protected ? " · 手工进度保护" : ""),
             ),
-            el("p", null, "本地：" + display(f.current)),
-            el("p", null, "来源：" + display(f.incoming)),
+            el("p", null, "本地：" + fieldValue(f.name, f.current)),
+            el("p", null, "来源：" + fieldValue(f.name, f.incoming)),
           );
           const choice = field(
             fieldRow,

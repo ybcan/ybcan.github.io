@@ -1,5 +1,7 @@
 import * as legacy from "#workbench/workspace-v1";
 
+import { PARENT_TYPES, parentOf } from "#workbench/hierarchy";
+
 export const COLLECTIONS = [
   "tasks",
   "projects",
@@ -26,6 +28,8 @@ const PROTECTED = new Set([
   "relations",
   "origin",
   "nextStep",
+  "parentRef",
+  "parentCustomized",
 ]);
 import { MAX_BACKUP_BYTES } from "#workbench/limits";
 const LIMIT = MAX_BACKUP_BYTES;
@@ -154,6 +158,22 @@ function normalizeRecord(collection, input, defaultOrigin = "user") {
   if (collection !== "sources") {
     r.goalIds = ids(input.goalIds, "关联目标");
     r.itemIds = ids(input.itemIds, "关联事项");
+  }
+  if (PARENT_TYPES[collection]) {
+    r.parentRef = null;
+    r.parentCustomized = bool(input.parentCustomized);
+    if (input.parentRef != null) {
+      requireObject(input.parentRef, "归属位置");
+      r.parentRef = {
+        collection: enumeration(
+          input.parentRef.collection,
+          PARENT_TYPES[collection],
+          null,
+          "归属类型",
+        ),
+        id: text(input.parentRef.id, "归属标识", 100, true),
+      };
+    }
   }
   if (collection === "goals") {
     r.why = text(input.why, "目标原因");
@@ -293,6 +313,26 @@ function references(state) {
     finished.add(id);
   }
   state.projects.forEach((p) => visit(p.id));
+  const ownership = new Map();
+  for (const c of ["goals", "projects", "plans", "archives"])
+    for (const r of state[c]) ownership.set(c + ":" + r.id, { c, r });
+  const complete = new Set();
+  for (const start of ownership.keys()) {
+    let key = start;
+    const path = new Set();
+    while (key && !complete.has(key)) {
+      if (path.has(key)) throw Error("归属关系不能形成环");
+      path.add(key);
+      const node = ownership.get(key),
+        parent = parentOf(node.c, node.r);
+      if (!parent) break;
+      const next = parent.collection + ":" + parent.id;
+      if (next === key) throw Error("事项不能归属自身");
+      if (!ownership.has(next)) throw Error("归属位置不存在：" + next);
+      key = next;
+    }
+    for (const k of path) complete.add(k);
+  }
 }
 
 /** @returns {import("./types.js").Workspace} */
@@ -476,6 +516,11 @@ function rewrite(record, collection, aliases) {
   const map = (type, id) => aliases[`${type}:${id}`] ?? id,
     r = structuredClone(record);
   r.id = map(collection, r.id);
+  if (r.parentRef)
+    r.parentRef = {
+      ...r.parentRef,
+      id: map(r.parentRef.collection, r.parentRef.id),
+    };
   if (r.goalIds) r.goalIds = r.goalIds.map((id) => map("goals", id));
   if (r.itemIds) r.itemIds = r.itemIds.map((id) => map("projects", id));
   if (r.projectId) r.projectId = map("projects", r.projectId);
@@ -593,14 +638,20 @@ export async function prepareUpdate(input, raw, options = {}) {
           const local = current[name],
             remote = incoming[name],
             before = base?.[name];
+          const protectedField =
+            PROTECTED.has(name) &&
+            !(inferStatus && name === "status") &&
+            !(
+              name === "parentRef" &&
+              base &&
+              local == null &&
+              before == null &&
+              !current.parentCustomized
+            );
           let status;
           if (equal(local, remote) || (base && equal(before, remote)))
             status = "same";
-          else if (
-            (PROTECTED.has(name) && !(inferStatus && name === "status")) ||
-            !base ||
-            !equal(local, before)
-          )
+          else if (protectedField || !base || !equal(local, before))
             status = "conflict";
           else status = "update";
           fields.push({
@@ -609,8 +660,7 @@ export async function prepareUpdate(input, raw, options = {}) {
             base: before,
             incoming: remote,
             status,
-            protected:
-              PROTECTED.has(name) && !(inferStatus && name === "status"),
+            protected: protectedField,
           });
         }
       const action = !current
@@ -760,6 +810,7 @@ export function clearExamples(input) {
     for (const key of COLLECTIONS)
       for (const r of s[key])
         if (keep[key].has(r.id)) {
+          if (r.parentRef) add(r.parentRef.collection, r.parentRef.id);
           (r.goalIds || []).forEach((id) => add("goals", id));
           (r.itemIds || []).forEach((id) => add("projects", id));
           (r.sourceRefs || []).forEach((ref) => add("sources", ref.sourceId));

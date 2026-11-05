@@ -24,6 +24,7 @@ class StrategyTests(browser_smoke.CockpitTests):
         goal=self.page.locator('.goal-card').filter(has_text='合成长期目标')
         expect(goal).to_contain_text('1 个事项')
         goal.get_by_role('button',name='查看关联事项').click()
+        self.page.locator('#learning-mode-list').click()
         expect(self.page.locator('#projects-list')).to_contain_text('合成实践项目')
         expect(self.page.locator('#projects-list .project')).to_have_count(1)
         expect(self.page.locator('#plan-columns')).not_to_contain_text('AI候选规划')

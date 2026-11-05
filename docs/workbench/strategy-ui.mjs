@@ -8,6 +8,8 @@ import {
 } from "#workbench/strategy-common";
 import { initStrategyEditor } from "#workbench/strategy-editor";
 import { initUpdatePreview } from "#workbench/update-preview";
+import { initHierarchyView } from "#workbench/hierarchy-view";
+import { createGoalResolver } from "#workbench/hierarchy";
 const $ = (id) => document.getElementById(id);
 export function initStrategy(ctx) {
   const common = createStrategyUI(ctx);
@@ -28,11 +30,18 @@ export function initStrategy(ctx) {
   let page = 0,
     pageToken = "";
   let editorModule;
+  let hierarchy;
+  let indexedState, indexedGoal;
   const edit = (...args) => editorModule.edit(...args),
     detail = (...args) => editorModule.detail(...args);
   function goalMatches(item) {
+    if (indexedState !== state()) {
+      indexedState = state();
+      indexedGoal = createGoalResolver(indexedState);
+    }
     return (
       !goalId ||
+      indexedGoal(item) === goalId ||
       (item.goalIds || []).includes(goalId) ||
       (item.itemIds || []).some((id) =>
         state()
@@ -124,7 +133,9 @@ export function initStrategy(ctx) {
     if ($("learning-workspace").classList.contains("is-collapsed"))
       $("fold-learning-workspace")?.click();
     ctx.setView("learning");
-    $("projects-list").scrollIntoView({ behavior: "smooth", block: "start" });
+    $(
+      hierarchy.mode() === "tree" ? "strategy-tree-panel" : "projects-list",
+    ).scrollIntoView({ behavior: "smooth", block: "start" });
   }
   function showContinuation() {
     const root = $("continuation-strip");
@@ -382,6 +393,7 @@ export function initStrategy(ctx) {
   editorModule = initStrategyEditor(ctx, common, selectGoal);
   const { fillEditor, readEditor } = editorModule;
   const { importUpdate } = initUpdatePreview(ctx, common);
+  hierarchy = initHierarchyView(ctx, common, { edit, detail });
   $("new-goal").addEventListener("click", () => edit("goals"));
   $("new-archive").addEventListener("click", () => edit("archives"));
   $("archive-filter").addEventListener("change", showArchives);
@@ -394,17 +406,25 @@ export function initStrategy(ctx) {
     showArchives();
   });
   return {
+    learningMode: () => hierarchy.mode(),
     goalMatches,
     goalId: () => goalId,
     clearGoal: () => {
       goalId = "";
     },
     render() {
-      const view = ctx.view();
-      $("strategy-landscape").hidden = !["overview", "learning"].includes(view);
-      $("continuation-strip").hidden = !["overview", "learning"].includes(view);
+      const view = ctx.view(),
+        list = hierarchy.mode() === "list";
+      $("strategy-landscape").hidden = !(
+        view === "overview" ||
+        (view === "learning" && list)
+      );
+      $("continuation-strip").hidden = !(
+        view === "overview" ||
+        (view === "learning" && list)
+      );
       $("archive-workspace").hidden = view !== "archives";
-      if (["overview", "learning"].includes(view)) {
+      if (view === "overview" || (view === "learning" && list)) {
         if (!$("strategy-landscape").classList.contains("is-collapsed"))
           showGoals();
         showContinuation();
@@ -412,6 +432,7 @@ export function initStrategy(ctx) {
           showProposals();
       }
       if (view === "archives") showArchives();
+      hierarchy.render(goalId);
     },
     decorateProject,
     decoratePlan,

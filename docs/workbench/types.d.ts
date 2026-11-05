@@ -27,7 +27,13 @@ export interface SourceRef {
   excerpt: string;
   kind: "intent" | "suggestion" | "evidence" | "preference";
 }
+export interface ParentRef {
+  collection: "goals" | "projects" | "plans";
+  id: string;
+}
 export interface LinkedRecord {
+  parentRef?: ParentRef | null;
+  parentCustomized?: boolean;
   id: string;
   directionIds: Direction[];
   goalIds: string[];

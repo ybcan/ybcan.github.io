@@ -1,5 +1,6 @@
 import { DIRECTIONS, safeUrl } from "#workbench/workspace";
 import { stable } from "#workbench/strategy";
+import { parentOf, PARENT_TYPES } from "#workbench/hierarchy";
 import {
   executionNames,
   adoptionNames,
@@ -69,6 +70,20 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     editor = null;
     const root = dialogBody(r.title);
     root.append(tags(r));
+    const parent = parentOf(collection, r);
+    if (parent)
+      root.append(
+        button(
+          "归属：" + titleOf(parent.collection, parent.id),
+          () => {
+            if (parent.collection === "goals") {
+              close();
+              selectGoal(parent.id);
+            } else detail(parent.collection, parent.id);
+          },
+          "relation-link",
+        ),
+      );
     if (collection === "archives") {
       root.append(badge(archiveNames[r.status]));
       for (const [key, label] of [
@@ -245,6 +260,30 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     if (!dialog.open) dialog.showModal();
   }
 
+  function parentField(root, collection, record, id) {
+    const value = record?.parentRef
+      ? record.parentRef.collection + ":" + record.parentRef.id
+      : "";
+    const options = [["", "自动归属（按已有目标或事项关联）"]];
+    for (const c of PARENT_TYPES[collection])
+      for (const r of state()[c])
+        if (!(c === collection && r.id === record?.id))
+          options.push([
+            c + ":" + r.id,
+            { goals: "目标", projects: "事项", plans: "计划" }[c] +
+              " · " +
+              r.title,
+          ]);
+    field(root, "归属位置", "" + id, value, "select", options);
+    root.append(
+      el("p", "field-hint", "归属决定树中的位置，不改变采纳状态和执行进度。"),
+    );
+  }
+  function readParent(value) {
+    if (!value) return null;
+    const i = value.indexOf(":");
+    return { collection: value.slice(0, i), id: value.slice(i + 1) };
+  }
   function checkboxGroup(root, label, id, options, selected) {
     const group = el("fieldset", "association-field");
     group.id = id;
@@ -352,6 +391,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
           ?.conversationUrl || "",
       );
       $("strategy-conversation").maxLength = 2000;
+      parentField(form, "archives", existing, "strategy-parent");
     }
     const error = el("p", "form-error");
     error.role = "alert";
@@ -396,6 +436,10 @@ export function initStrategyEditor(ctx, common, selectGoal) {
               item.confirmed = true;
               item.origin = "user";
             } else {
+              const parent = readParent(values["strategy-parent"]);
+              if (stable(item.parentRef ?? null) !== stable(parent))
+                item.parentCustomized = true;
+              item.parentRef = parent;
               item.projectId = values["strategy-project"];
               const project = s.projects.find((p) => p.id === item.projectId);
               item.goalIds = project?.goalIds || [];
@@ -495,6 +539,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         r?.itemIds,
       );
     if (["projects", "plans"].includes(kind)) {
+      parentField(extra, kind, r, "record-parent");
       if (kind === "projects")
         field(
           extra,
@@ -583,6 +628,10 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     item.goalIds = checked("record-goals");
     if (kind !== "projects") item.itemIds = checked("record-items");
     if (["projects", "plans"].includes(kind)) {
+      const parent = readParent($("record-parent").value);
+      if (stable(item.parentRef ?? null) !== stable(parent))
+        item.parentCustomized = true;
+      item.parentRef = parent;
       item.directionIds = Array.from(
         new Set(
           [item.direction, ...checked("record-directions")].filter(Boolean),

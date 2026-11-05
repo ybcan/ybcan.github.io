@@ -686,6 +686,7 @@ workspaceViews = initWorkspaceViews({
   query: () => query,
   direction: () => direction,
   view: () => view,
+  learningMode: () => strategy.learningMode(),
 });
 tools = initTools({ el, icon, toast });
 backupUI = await initBackupSettings({

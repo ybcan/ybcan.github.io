@@ -348,6 +348,7 @@ export function initStrategy(ctx) {
               : "原始时间未知",
           ),
           button("查看记录", () => detail("archives", r.id)),
+          button("编辑", () => edit("archives", r.id), "subtle-link"),
         );
         card.append(bottom);
         root.append(card);
@@ -413,6 +414,7 @@ export function initStrategy(ctx) {
       goalId = "";
     },
     render() {
+      if (goalId && !state().goals.some((g) => g.id === goalId)) goalId = "";
       const view = ctx.view(),
         list = hierarchy.mode() === "list";
       $("strategy-landscape").hidden = !(

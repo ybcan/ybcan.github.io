@@ -53,7 +53,7 @@ class ReliabilityTests(strategy_browser.StrategyTests):
 
     def test_about_has_release_and_license_information(self):
         self.page.locator('#about-button').click()
-        expect(self.page.locator('#about-dialog')).to_contain_text('0.4.0')
+        expect(self.page.locator('#about-dialog')).to_contain_text('0.4.1')
         expect(self.page.locator('#about-dialog')).to_contain_text('ybcan')
         expect(self.page.get_by_role('link',name='MIT 许可证')).to_be_visible()
 

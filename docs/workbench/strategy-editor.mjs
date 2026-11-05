@@ -1,5 +1,5 @@
 import { DIRECTIONS, safeUrl } from "#workbench/workspace";
-import { stable } from "#workbench/strategy";
+import { stable, removeRecord } from "#workbench/strategy";
 import { parentOf, PARENT_TYPES } from "#workbench/hierarchy";
 import {
   executionNames,
@@ -399,6 +399,50 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     const actions = el("div", "dialog-actions"),
       save = el("button", "button primary", "保存");
     save.id = "strategy-save";
+    if (existing) {
+      const target = { ...editor };
+      const remove = button(
+        "删除",
+        async () => {
+          if (saving) return;
+          if (
+            !(await ctx.confirm(
+              "删除这条记录？",
+              "仅删除所选记录，保留其下的计划和学习记录并解除关联。删除后可从备份恢复。",
+              "删除",
+            ))
+          )
+            return;
+          if (!dialog.contains(form)) return;
+          saving = true;
+          save.disabled = true;
+          try {
+            if (
+              await commit(
+                (s) => {
+                  const current = s[collection].find((r) => r.id === target.id);
+                  if (!current || stable(current) !== target.original)
+                    throw Error("记录已有变化，请重新打开后确认删除。");
+                  removeRecord(s, collection, target.id);
+                },
+                { requirePersistence: true },
+              )
+            ) {
+              if (dialog.contains(form)) close();
+              toast("记录已删除");
+            } else
+              error.textContent =
+                "删除未保存，记录已保留。" + (ctx.error() || "");
+          } finally {
+            saving = false;
+            save.disabled = false;
+          }
+        },
+        "button danger-text",
+      );
+      remove.id = "strategy-delete";
+      actions.append(remove);
+    }
     actions.append(button("取消", close), save);
     form.append(actions);
     let saving = false;
@@ -442,8 +486,10 @@ export function initStrategyEditor(ctx, common, selectGoal) {
               item.parentRef = parent;
               item.projectId = values["strategy-project"];
               const project = s.projects.find((p) => p.id === item.projectId);
-              item.goalIds = project?.goalIds || [];
-              item.directionIds = project?.directionIds || [];
+              if (!current || item.projectId !== current.projectId) {
+                item.goalIds = project?.goalIds || [];
+                item.directionIds = project?.directionIds || [];
+              }
               for (const key of [
                 "question",
                 "answer",
@@ -455,13 +501,15 @@ export function initStrategyEditor(ctx, common, selectGoal) {
                 "nextAction",
               ])
                 item[key] = values["strategy-" + key].trim();
-              item.status = !item.answer
-                ? item.question
-                  ? "waiting_answer"
-                  : "verify"
-                : !item.feedback
-                  ? "waiting_feedback"
-                  : "recorded";
+              item.statusMode = current?.statusMode || "derived";
+              if (item.statusMode !== "confirmed")
+                item.status = !item.answer
+                  ? item.question
+                    ? "waiting_answer"
+                    : "verify"
+                  : !item.feedback
+                    ? "waiting_feedback"
+                    : "recorded";
               item.capturedAt = current?.capturedAt || new Date().toISOString();
               const share = values["strategy-share"].trim(),
                 conversation = values["strategy-conversation"].trim();

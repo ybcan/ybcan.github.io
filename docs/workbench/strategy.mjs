@@ -759,6 +759,35 @@ export function applyUpdate(input, preview, decisions = {}) {
   return normalized;
 }
 
+/** Remove one entity in a transaction; descendants and their evidence remain intact. */
+export function removeRecord(state, collection, id) {
+  if (![...BASE, "goals", "archives"].includes(collection))
+    throw Error("不支持删除这类记录。");
+  const index = state[collection].findIndex((r) => r.id === id);
+  if (index < 0) throw Error("记录已被删除，请刷新后重试。");
+  state[collection].splice(index, 1);
+  for (const c of COLLECTIONS)
+    for (const record of state[c]) {
+      if (collection === "goals" && record.goalIds)
+        record.goalIds = record.goalIds.filter((v) => v !== id);
+      if (collection === "projects") {
+        if (record.itemIds)
+          record.itemIds = record.itemIds.filter((v) => v !== id);
+        if (record.relations)
+          record.relations = record.relations.filter((r) => r.targetId !== id);
+        if (c === "archives" && record.projectId === id) record.projectId = "";
+      }
+      if (
+        record.parentRef?.collection === collection &&
+        record.parentRef.id === id
+      ) {
+        record.parentRef = null;
+        record.parentCustomized = true;
+      }
+    }
+  return state;
+}
+
 export function trackRevisions(before, after, kind = "手工修改") {
   if ((after.revisions ?? []).length > (before.revisions ?? []).length)
     return after;

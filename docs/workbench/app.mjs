@@ -629,6 +629,7 @@ window.addEventListener("beforeunload", (event) => {
   }
 });
 strategy = initStrategy({
+  confirm: confirmAction,
   state: () => state,
   refresh: refreshForPreview,
   error: () => $("toast").textContent,

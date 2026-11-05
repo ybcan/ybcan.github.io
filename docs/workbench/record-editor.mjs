@@ -1,5 +1,5 @@
 import { safeUrl, validateWorkspace } from "#workbench/workspace";
-import { stable } from "#workbench/strategy";
+import { stable, removeRecord } from "#workbench/strategy";
 const $ = (id) => document.getElementById(id);
 export function initRecordEditor(ctx) {
   const { el, icon, commit, toast } = ctx;
@@ -203,21 +203,28 @@ export function initRecordEditor(ctx) {
     if (
       !(await confirmAction(
         "删除这条记录？",
-        "删除后无法从页面撤销。重要内容建议先导出备份。",
+        "仅删除所选记录，保留其下的计划和学习记录并解除关联。删除后可从备份恢复。",
         "删除",
       ))
     )
       return;
     if (
-      await commit((s) => {
-        const current = s[target.kind].find((x) => x.id === target.id);
-        if (!current || recordSignature(current) !== target.original)
-          throw Error("记录已有变化，请重新打开后确认删除。");
-        s[target.kind] = s[target.kind].filter((x) => x.id !== target.id);
-      })
+      await commit(
+        (s) => {
+          const current = s[target.kind].find((x) => x.id === target.id);
+          if (!current || recordSignature(current) !== target.original)
+            throw Error("记录已有变化，请重新打开后确认删除。");
+          removeRecord(s, target.kind, target.id);
+        },
+        { requirePersistence: true },
+      )
     ) {
       $("record-dialog").close();
       toast("记录已删除");
+    } else {
+      $("record-error").textContent =
+        "删除未保存，记录已保留。" + (ctx.error() || "");
+      $("record-error").hidden = false;
     }
   });
 

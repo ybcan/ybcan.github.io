@@ -1,6 +1,6 @@
 // @ts-check
 export const APP_INFO = {
-  version: "0.4.0",
+  version: "0.4.1",
   author: "ybcan",
   updated: "2026-11-05",
   source: "https://github.com/ybcan/ybcan.github.io",

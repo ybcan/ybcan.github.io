@@ -41,6 +41,7 @@ class CockpitTests(unittest.TestCase):
         self.errors = []
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
         self.page.goto(self.url)
+        self.page.locator('html[data-ready="true"]').wait_for()
 
     def tearDown(self):
         self.assertEqual(self.errors, [])
@@ -58,6 +59,7 @@ class CockpitTests(unittest.TestCase):
         if steps is not None:
             self.page.locator('#record-steps').fill(steps)
         self.page.locator('#record-submit').click()
+        expect(self.page.locator('#record-dialog')).not_to_be_visible()
 
     def test_tasks_projects_and_notes_survive_reload(self):
         self.page.locator('#task-text').fill('浏览器测试待办')
@@ -68,10 +70,12 @@ class CockpitTests(unittest.TestCase):
         self.add_record('projects', '浏览器测试学习', 'learn', steps='理解\n动手')
         project = self.page.locator('.project').filter(has_text='浏览器测试学习')
         project.get_by_role('checkbox', name='理解', exact=True).click()
-        self.assertIn('1 / 2', project.inner_text())
+        expect(project).to_contain_text('1 / 2')
         self.page.locator('#note-text').fill('浏览器测试想法')
         self.page.locator('#note-save').click()
+        expect(self.page.locator('#notes-list')).to_contain_text('浏览器测试想法')
         self.page.reload()
+        self.page.locator('html[data-ready="true"]').wait_for()
         self.assertIn('浏览器测试想法', self.page.locator('#notes-list').inner_text())
         self.assertIn('1 / 2', self.page.locator('.project').filter(has_text='浏览器测试学习').inner_text())
         self.page.locator('#task-filter').select_option('done')
@@ -89,9 +93,9 @@ class CockpitTests(unittest.TestCase):
         self.add_record('plans', '状态迁移计划', 'ai')
         plan = self.page.locator('.plan-card').filter(has_text='状态迁移计划')
         plan.get_by_role('button', name='推进计划：状态迁移计划', exact=True).click()
-        self.assertTrue(self.page.locator('[data-status="active"] .plan-card').filter(has_text='状态迁移计划').is_visible())
+        expect(self.page.locator('[data-status="active"] .plan-card').filter(has_text='状态迁移计划')).to_be_visible()
         plan.get_by_role('button', name='推进计划：状态迁移计划', exact=True).click()
-        self.assertTrue(self.page.locator('[data-status="done"] .plan-card').filter(has_text='状态迁移计划').is_visible())
+        expect(self.page.locator('[data-status="done"] .plan-card').filter(has_text='状态迁移计划')).to_be_visible()
 
     def test_search_filter_and_user_markup_are_safe(self):
         hostile = '<img src=x onerror="window.attacked=1">'
@@ -126,6 +130,7 @@ class CockpitTests(unittest.TestCase):
         self.page.locator('#confirm-accept').click()
         self.page.locator('#settings-close').click()
         self.page.reload()
+        self.page.locator('html[data-ready="true"]').wait_for()
         self.assertIn('导出前记录', self.page.locator('#notes-list').inner_text())
         self.assertNotIn('导出后记录', self.page.locator('#notes-list').inner_text())
 
@@ -152,6 +157,7 @@ class CockpitTests(unittest.TestCase):
         self.page.locator('#settings-close').click()
         self.assertTrue(self.page.get_by_role('link', name='外部导入的站点', exact=True).is_visible())
         self.page.reload()
+        self.page.locator('html[data-ready="true"]').wait_for()
         self.assertTrue(self.page.get_by_role('link', name='外部导入的站点', exact=True).is_visible())
 
     def test_two_open_tabs_preserve_independent_additions(self):
@@ -161,7 +167,9 @@ class CockpitTests(unittest.TestCase):
         self.page.locator('#note-save').click()
         other.locator('#note-text').fill('第二个标签页的记录')
         other.locator('#note-save').click()
+        expect(other.locator('#notes-list')).to_contain_text('第二个标签页的记录')
         self.page.reload()
+        self.page.locator('html[data-ready="true"]').wait_for()
         self.assertIn('第一个标签页的记录', self.page.locator('#notes-list').inner_text())
         self.assertIn('第二个标签页的记录', self.page.locator('#notes-list').inner_text())
         other.close()
@@ -173,11 +181,13 @@ class CockpitTests(unittest.TestCase):
         other.get_by_role('button', name='编辑待办：读完一篇前沿文章', exact=True).click()
         other.locator('#record-title').fill('另一个标签页已修改的标题')
         other.locator('#record-submit').click()
+        expect(other.locator('#record-dialog')).not_to_be_visible()
         self.page.locator('#record-title').fill('过期编辑器中的标题')
         self.page.locator('#record-submit').click()
         self.assertTrue(self.page.locator('#record-dialog').is_visible())
-        self.assertIn('其他标签页', self.page.locator('#toast').inner_text())
+        expect(self.page.locator('#record-error')).to_contain_text('其他标签页')
         self.page.reload()
+        self.page.locator('html[data-ready="true"]').wait_for()
         self.assertIn('另一个标签页已修改的标题', self.page.locator('#tasks-list').inner_text())
         other.close()
 
@@ -204,16 +214,17 @@ class CockpitTests(unittest.TestCase):
     def test_corrupt_storage_is_not_overwritten(self):
         self.page.evaluate("localStorage.setItem('personal-cockpit.workspace.v1','{broken')")
         self.page.reload()
+        self.page.locator('html[data-ready="true"]').wait_for()
         self.assertFalse(self.page.locator('#storage-alert').is_hidden())
         self.page.locator('#task-text').fill('不能覆盖原始记录')
         self.page.get_by_role('button', name='添加待办', exact=True).click()
         self.assertEqual(self.page.evaluate("localStorage.getItem('personal-cockpit.workspace.v1')"), '{broken')
 
     def test_failed_storage_keeps_notes_visible_and_exportable(self):
-        self.page.evaluate("() => { Storage.prototype.setItem = function() { throw new DOMException('quota', 'QuotaExceededError'); }; }")
+        self.page.evaluate("() => { IDBObjectStore.prototype.put = function() { throw new DOMException('quota', 'QuotaExceededError'); }; }")
         self.page.locator('#note-text').fill('存储失败时也应可导出的记录')
         self.page.locator('#note-save').click()
-        self.assertIn('存储失败时也应可导出的记录', self.page.locator('#notes-list').inner_text())
+        expect(self.page.locator('#notes-list')).to_contain_text('存储失败时也应可导出的记录')
         self.assertIn('刷新或关闭前导出', self.page.locator('#storage-alert').inner_text())
         self.page.locator('#settings-button').click()
         with self.page.expect_download() as download:

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "docs/workbench/**/*.mjs",
+    "docs/workbench/**/*.d.ts",
+    "tests/contracts.ts"
+  ]
+}

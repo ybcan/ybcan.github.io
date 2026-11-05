@@ -29,7 +29,7 @@ class StrategyTests(browser_smoke.CockpitTests):
         expect(self.page.locator('#plan-columns')).not_to_contain_text('AI候选规划')
         proposal=self.page.locator('.proposal-card').filter(has_text='AI候选规划')
         proposal.get_by_role('button',name='采纳',exact=True).click()
-        stored=self.page.evaluate('JSON.parse(localStorage.getItem("personal-cockpit.workspace.v2")).data')
+        stored=self.page.evaluate('async () => { const s = await (await import("./workbench/storage.mjs")).openWorkspaceStore(); return JSON.parse(await s.read()).data; }')
         plan=next(x for x in stored['plans'] if x['id']=='plan-x')
         self.assertEqual(plan['adoption'],'adopted'); self.assertEqual(plan['execution'],'unknown')
         self.assertIn('AI候选规划',self.page.locator('#plan-columns').inner_text())
@@ -76,12 +76,12 @@ class StrategyTests(browser_smoke.CockpitTests):
         self.assertLessEqual(self.page.locator('#strategy-dialog').bounding_box()['width'],390)
 
     def test_import_write_failure_preserves_workspace_and_preview(self):
-        before=self.page.evaluate('localStorage.getItem("personal-cockpit.workspace.v2")')
-        self.page.evaluate("() => { Storage.prototype.setItem=()=>{throw Error('quota')} }")
+        before=self.page.evaluate('async () => { const s = await (await import("./workbench/storage.mjs")).openWorkspaceStore(); return s.read(); }')
+        self.page.evaluate("() => { IDBObjectStore.prototype.put=()=>{throw Error('quota')} }")
         self.page.locator('#update-file').set_input_files({'name':'update.json','mimeType':'application/json','buffer':json.dumps(self.packet()).encode()})
         self.page.locator('#update-apply').click()
         expect(self.page.locator('#update-dialog')).to_be_visible()
-        self.assertEqual(self.page.evaluate('localStorage.getItem("personal-cockpit.workspace.v2")'),before)
+        self.assertEqual(self.page.evaluate('async () => { const s = await (await import("./workbench/storage.mjs")).openWorkspaceStore(); return s.read(); }'),before)
         self.assertEqual(self.page.locator('.goal-card').filter(has_text='合成长期目标').count(),0)
 
     def test_shared_source_edits_from_another_tab_are_not_reverted(self):
@@ -97,7 +97,7 @@ class StrategyTests(browser_smoke.CockpitTests):
         other.locator('#strategy-save').click()
         self.page.locator('#strategy-answer').fill('仅修改本轮回答')
         self.page.locator('#strategy-save').click()
-        data=self.page.evaluate('JSON.parse(localStorage.getItem("personal-cockpit.workspace.v2")).data')
+        data=self.page.evaluate('async () => { const s = await (await import("./workbench/storage.mjs")).openWorkspaceStore(); return JSON.parse(await s.read()).data; }')
         self.assertEqual(next(s for s in data['sources'] if s['id']=='source-x')['shareUrl'],'https://example.com/updated-source')
         self.assertTrue(any(r['collection']=='sources' for r in data['revisions']))
         self.page.locator('.archive-card').filter(has_text='合成学习断点').get_by_role('button',name='查看记录').click()
@@ -116,9 +116,12 @@ class StrategyTests(browser_smoke.CockpitTests):
     def test_repreview_refreshes_changes_from_another_tab(self):
         self.page.locator('#update-file').set_input_files({'name':'update.json','mimeType':'application/json','buffer':json.dumps(self.packet()).encode()})
         other=self.context.new_page();other.goto(self.url);other.locator('#task-text').fill('其他标签页的新待办');other.get_by_role('button',name='添加待办',exact=True).click()
+        expect(other.locator('#tasks-list')).to_contain_text('其他标签页的新待办')
         self.page.locator('#update-apply').click()
         expect(self.page.locator('#update-dialog')).to_be_visible()
+        expect(self.page.locator('#update-error')).to_contain_text('已有变化')
         self.page.get_by_role('button',name='重新预览',exact=True).click()
+        expect(self.page.locator('#update-error')).to_have_text('')
         self.page.locator('#update-apply').click()
         expect(self.page.locator('#update-dialog')).not_to_be_visible()
         expect(self.page.locator('#tasks-list')).to_contain_text('其他标签页的新待办')

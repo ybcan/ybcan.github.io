@@ -590,3 +590,61 @@ input[type="checkbox"] {
     margin-left: 15px;
   }
 }
+.backup-settings {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 18px 0;
+  min-width: 0;
+}
+.backup-settings select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 15px 0;
+  padding: 9px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+.backup-settings .strategy-actions {
+  margin: 12px 0;
+}
+.archive-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 15px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.fold-button {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  width: 25px;
+  height: 25px;
+  color: var(--muted);
+}
+.is-collapsed > :not(:first-child) {
+  display: none !important;
+}
+.strategy-landscape.is-collapsed {
+  padding-bottom: 0;
+}
+.is-collapsed {
+  min-height: 0 !important;
+}
+.tool-dock.is-collapsed > .website-dock > :not(.dock-heading) {
+  display: none !important;
+}
+.tool-dock.is-collapsed > .experiment-dock {
+  display: none !important;
+}
+.page-footer {
+  gap: 15px;
+  flex-wrap: wrap;
+}

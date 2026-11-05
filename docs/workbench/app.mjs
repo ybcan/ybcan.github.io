@@ -12,87 +12,22 @@ import {
   textStatistics,
   formatJson,
   FocusClock,
-} from "./workspace.mjs?v=20261105-strategy2";
+} from "#workbench/workspace";
 
-import { initStrategy } from "./strategy-ui.mjs?v=20261105-strategy2";
-import { trackRevisions, stable } from "./strategy.mjs?v=20261105-strategy2";
+import { initStrategy } from "#workbench/strategy-ui";
+import { trackRevisions, stable } from "#workbench/strategy";
+
+import { initAbout } from "#workbench/about";
+import { initLayout } from "#workbench/layout";
+import { el, icon } from "#workbench/dom";
+import { initRecordEditor } from "#workbench/record-editor";
+import { initWorkspaceViews } from "#workbench/workspace-views";
+import { initTools } from "#workbench/tools";
+import { openWorkspaceStore, volatileStore } from "#workbench/storage";
+import { initBackupSettings } from "#workbench/backup-settings";
+import { MAX_BACKUP_BYTES } from "#workbench/limits";
 
 const $ = (id) => document.getElementById(id);
-const NS = "http://www.w3.org/2000/svg";
-const PATHS = {
-  cube: ["M12 2 22 7v10l-10 5L2 17V7Z", "M2 7l10 5 10-5M12 12v10M12 2v10"],
-  home: ["m3 10 9-7 9 7v11h-6v-7H9v7H3Z"],
-  layers: ["m12 3 10 5-10 5L2 8Z", "m2 12 10 5 10-5M2 16l10 5 10-5"],
-  check: [
-    "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z",
-    "m7 12 3 3 7-7",
-  ],
-  note: [
-    "M12 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-7",
-    "m16 3 5 5-9 9-6 1 1-6Z",
-  ],
-  flask: ["M9 3h6M10 3v7L4 20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1l-6-10V3M7 15h10"],
-  chart: ["M3 3v18h18M6 15l5-6 4 3 6-8M17 4h4v4"],
-  spark: ["m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z"],
-  code: ["m7 5-6 7 6 7M17 5l6 7-6 7M14 3l-4 18"],
-  learn: ["m2 8 10-5 10 5-10 5Z", "M6 10v8q6 5 12 0v-8M22 8v9"],
-  people: [
-    "M9 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM17 4a3 3 0 0 1 0 6M2 21v-4a6 6 0 0 1 12 0v4M18 13a5 5 0 0 1 4 5v3",
-  ],
-  document: ["M5 2h9l5 5v15H5ZM14 2v6h5M8 12h8M8 16h8"],
-  plus: ["M12 4v16M4 12h16"],
-  close: ["m6 6 12 12M6 18 18 6"],
-  "arrow-right": ["M4 12h16m-6-6 6 6-6 6"],
-  calendar: ["M4 5h16v16H4ZM8 2v6M16 2v6M4 10h16M8 14h2M14 14h2M8 17h2"],
-  link: [
-    "m10 14 4-4M8 16l-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0M16 8l1-1a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0",
-  ],
-  clock: ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20ZM12 6v7l5 2"],
-  braces: [
-    "M8 3H6a2 2 0 0 0-2 2v4l-2 3 2 3v4a2 2 0 0 0 2 2h2M16 3h2a2 2 0 0 1 2 2v4l2 3-2 3v4a2 2 0 0 1-2 2h-2",
-  ],
-  play: ["m8 4 12 8-12 8Z"],
-  pause: ["M8 4v16M16 4v16"],
-  stop: ["M6 6h12v12H6Z"],
-  sliders: ["M4 6h16M4 18h16M8 3v6M16 15v6"],
-  settings: [
-    "m9 2-1 4-4 1-2 4 3 3v4l4 2 3-2 4 2 4-2v-4l3-3-2-4-4-1-1-4Z",
-    "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
-  ],
-  download: ["M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"],
-  upload: ["M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"],
-  lock: ["M5 10h14v11H5ZM8 10V6a4 4 0 0 1 8 0v4M12 14v3"],
-  search: ["M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM16 16l6 6"],
-  return: ["M20 5v9H4m5-5-5 5 5 5"],
-  filter: ["M3 4h18l-7 8v7l-4 2v-9Z"],
-  edit: ["m16 3 5 5-11 11-6 1 1-6ZM14 5l5 5"],
-  github: [
-    "M9 19c-5 2-5-3-7-3M16 22v-4a4 4 0 0 0-1-3c4 0 6-2 6-6a5 5 0 0 0-2-4c1-2 0-4 0-4-2 0-4 2-4 2a13 13 0 0 0-6 0S7 1 5 1c0 0-1 2 0 4a5 5 0 0 0-2 4c0 4 2 6 6 6a4 4 0 0 0-1 3v4",
-  ],
-  swirl: [
-    "M12 3a5 5 0 0 1 8 5 5 5 0 0 1 0 9 5 5 0 0 1-8 4 5 5 0 0 1-8-5 5 5 0 0 1 0-9 5 5 0 0 1 8-4Z",
-    "m12 6 6 4v7l-6 3-6-4V9ZM6 9l6 4 6-3M12 13v7",
-  ],
-};
-
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-function icon(name) {
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("class", "icon");
-  svg.setAttribute("aria-hidden", "true");
-  for (const d of PATHS[name] || PATHS.document) {
-    const path = document.createElementNS(NS, "path");
-    path.setAttribute("d", d);
-    svg.append(path);
-  }
-  return svg;
-}
 document
   .querySelectorAll("[data-icon]")
   .forEach((node) => node.replaceWith(icon(node.dataset.icon)));
@@ -101,7 +36,33 @@ const storage = {
   getItem: (key) => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value),
 };
-const initial = loadWorkspace(storage);
+let store, initialRaw;
+try {
+  store = await openWorkspaceStore();
+  initialRaw = await store.read();
+} catch {
+  store = volatileStore(storage);
+  initialRaw = await store.read();
+}
+let initial;
+try {
+  initial = {
+    state: initialRaw === null ? createWorkspace() : parseBackup(initialRaw),
+    status: !store.available
+      ? "unavailable"
+      : initialRaw === null
+        ? "new"
+        : "saved",
+    raw: initialRaw,
+  };
+} catch {
+  initial = {
+    state: createWorkspace(false),
+    status: "corrupt",
+    raw: initialRaw,
+  };
+}
+let backupUI;
 let state = initial.state;
 let storageStatus = initial.status;
 let corruptRaw = initial.status === "corrupt" ? initial.raw : null;
@@ -109,11 +70,15 @@ let savedSnapshot = initial.raw ?? null;
 let volatileChanges = false;
 let direction = "",
   query = "",
-  view = "overview",
-  editing = null,
-  notesExpanded = false;
+  view = "overview";
 let toastTimeout;
-const clock = new FocusClock();
+let recordEditor, tools, workspaceViews;
+function openRecord(...args) {
+  return recordEditor.open(...args);
+}
+function openTool(kind) {
+  return tools.open(kind);
+}
 const names = {
   tasks: "待办",
   projects: "学习",
@@ -170,16 +135,6 @@ function toast(message) {
     $("toast").hidden = true;
   }, 3300);
 }
-function tag(id) {
-  const d = DIRECTIONS.find((x) => x.id === id);
-  const node = el("span", "tag");
-  if (d) {
-    const dot = el("span", "dot");
-    dot.style.setProperty("--direction", d.color);
-    node.append(dot, document.createTextNode(d.name));
-  } else node.textContent = "未归类";
-  return node;
-}
 function matches(item, useGoal = true) {
   if (useGoal !== false && strategy && !strategy.goalMatches(item))
     return false;
@@ -212,92 +167,66 @@ function matches(item, useGoal = true) {
       .includes(query)
   );
 }
-function dateLabel(value) {
-  if (!value) return "";
-  return new Date(value).toLocaleString("zh-CN", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-function dueLabel(value) {
-  return value ? `目标 ${value.replaceAll("-", ".")}` : "";
-}
-function editButton(kind, item) {
-  const title = item.title || item.name || item.body.slice(0, 18);
-  const button = el("button", "icon-button edit-record");
-  button.setAttribute("aria-label", `编辑${names[kind]}：${title}`);
-  button.title = "编辑";
-  button.append(icon("edit"));
-  button.addEventListener("click", () => openRecord(kind, item.id));
-  return button;
-}
-function empty(parent, message, kind) {
-  const box = el("div", "empty-state");
-  box.append(
-    icon(kind === "experiments" ? "flask" : "spark"),
-    el("p", null, message),
-  );
-  if (kind) {
-    const button = el("button", "button small", "＋ 添加" + names[kind]);
-    button.addEventListener("click", () => openRecord(kind));
-    box.append(button);
-  }
-  parent.append(box);
-}
-
 // A bad stored snapshot is never implicitly replaced. Volatile changes remain
 // visible and exportable if the browser refuses a write.
+let pendingWrites = 0;
+let commitTail = Promise.resolve();
 function commit(change, options = {}) {
+  pendingWrites++;
+  const job = commitTail
+    .then(() => performCommit(change, options))
+    .finally(() => {
+      pendingWrites--;
+    });
+  commitTail = job.catch(() => {});
+  return job;
+}
+async function performCommit(change, options) {
   if (corruptRaw !== null) {
-    toast("请先在数据设置中恢复备份或重建工作区，原始记录未被覆盖。");
+    toast("请先恢复异常工作区，原始记录未被覆盖。");
     return false;
   }
-  let next;
-  let base = state;
-  let baseline = savedSnapshot;
-  let latestRaw;
-  try {
-    latestRaw = storage.getItem(STORAGE_KEY);
-  } catch {
-    latestRaw = savedSnapshot;
-  }
-  if (latestRaw !== savedSnapshot) {
-    if (volatileChanges) {
-      toast(
-        "其他标签页更新了工作区。本页还有未保存内容，请先导出备份，再刷新后继续。",
-      );
-      return false;
-    }
+  let next,
+    baseline = savedSnapshot,
+    invalid = false;
+  const calculate = (raw) => {
     try {
-      base =
-        latestRaw === null ? createWorkspace(false) : parseBackup(latestRaw);
-      baseline = latestRaw;
-    } catch {
-      corruptRaw = latestRaw;
-      updateStorageStatus();
-      toast("其他标签页的记录无法读取，已暂停写入，避免覆盖原始数据。");
-      return false;
+      if (raw !== savedSnapshot && volatileChanges)
+        throw Error(
+          "其他标签页更新了工作区。本页有未保存内容，请先导出备份，再刷新。",
+        );
+      const base =
+        raw === savedSnapshot
+          ? state
+          : raw === null
+            ? createWorkspace(false)
+            : parseBackup(raw);
+      baseline = raw;
+      next = structuredClone(base);
+      change(next);
+      next = validateWorkspace(trackRevisions(base, next));
+      return serializeBackup(next);
+    } catch (error) {
+      invalid = true;
+      throw error;
     }
-  }
+  };
   try {
-    next = structuredClone(base);
-    change(next);
-    next = validateWorkspace(trackRevisions(base, next));
-    serializeBackup(next);
-  } catch (error) {
-    toast(error.message);
-    return false;
-  }
-  try {
-    savedSnapshot = saveWorkspace(storage, next);
+    savedSnapshot = await store.update(calculate);
     volatileChanges = false;
     storageStatus = "saved";
-  } catch {
-    if (options.requirePersistence) {
-      toast("浏览器未能保存，归档未合并。请导出备份后整理空间，再重试。");
+  } catch (error) {
+    if (invalid || options.requirePersistence) {
+      toast(error.message || "归档未保存，当前内容未替换。");
       return false;
+    }
+    if (!next) {
+      try {
+        calculate(savedSnapshot);
+      } catch (error) {
+        toast(error.message);
+        return false;
+      }
     }
     savedSnapshot = baseline;
     volatileChanges = true;
@@ -306,348 +235,65 @@ function commit(change, options = {}) {
   state = next;
   render();
   if (storageStatus === "unavailable")
-    toast("仅暂存在本页。浏览器未能保存，请在刷新前导出备份。");
+    toast("仅暂存在本页。浏览器未能保存，请在刷新或关闭前导出备份。");
+  else backupUI?.schedule();
   return true;
 }
-
-// Refreshing an import must compare against the current persisted snapshot.
-// Unsaved local changes remain exportable and are never discarded here.
-function refreshForPreview() {
+async function refreshForPreview() {
   if (corruptRaw !== null) throw Error("请先恢复异常工作区，再合并归档。");
-  let raw;
-  try {
-    raw = storage.getItem(STORAGE_KEY);
-  } catch {
-    throw Error("无法读取浏览器存储，归档文件已保留，请恢复存储后重试。");
-  }
+  const raw = await store.read();
   if (raw === savedSnapshot) return;
   if (volatileChanges)
     throw Error(
       "本页有未保存内容，其他标签页也有更新。请先导出备份，再刷新后合并。",
     );
-  const latest = raw === null ? createWorkspace(false) : parseBackup(raw);
-  state = latest;
+  state = raw === null ? createWorkspace(false) : parseBackup(raw);
   savedSnapshot = raw;
-  storageStatus = raw === null ? "new" : "saved";
+  storageStatus = "saved";
   render();
 }
-
-function renderProjects() {
-  const root = $("projects-list");
-  root.replaceChildren();
-  const projects = state.projects.filter(
-    (p) => p.adoption === "adopted" && matches(p),
-  );
-  $("project-summary").textContent = `${projects.length} 个跟踪事项`;
-  if (!projects.length)
-    empty(
-      root,
-      query || direction
-        ? "这个筛选下，还没有学习项目。"
-        : "把想学的技术或方法，拆成可以完成的步骤。",
-      "projects",
-    );
-  const visibleProjects =
-    view === "overview" && !query && !direction && !strategy?.goalId()
-      ? projects.slice(0, 3)
-      : projects;
-  for (const project of visibleProjects) {
-    const card = el("article", "project");
-    const symbol = el("div", "project-icon");
-    symbol.append(
-      icon(DIRECTIONS.find((d) => d.id === project.direction)?.icon || "learn"),
-    );
-    const content = el("div", "project-content"),
-      title = el("div", "project-title-row");
-    title.append(el("h3", null, project.title), tag(project.direction));
-    const completed = project.steps.filter((x) => x.done).length;
-    const next = project.steps.find((x) => !x.done);
-    const subtitle = el(
-      "p",
-      "project-next",
-      project.steps.length
-        ? next
-          ? "下一步：" + next.title
-          : "这一组步骤已完成，记下收获吧。"
-        : "还没有学习步骤，点击编辑来拆解。",
-    );
-    const count = el(
-      "span",
-      "project-count",
-      `${completed} / ${project.steps.length} 步`,
-    );
-    content.append(title, subtitle, count);
-    if (project.demo) content.append(el("span", "example-label", " · 示例"));
-    const steps = el("div", "project-steps");
-    project.steps.forEach((step, index) => {
-      if (index) steps.append(el("span", "step-arrow", "›"));
-      const label = el("label", "step-pill" + (step.done ? " done" : ""));
-      const input = el("input");
-      input.type = "checkbox";
-      input.checked = step.done;
-      input.dataset.focusKey = step.id;
-      input.addEventListener("change", () =>
-        commit((s) => {
-          const p = s.projects.find((x) => x.id === project.id);
-          p.steps.find((x) => x.id === step.id).done = input.checked;
-          p.demo = false;
-        }),
+async function restoreWorkspace(imported) {
+  await commitTail;
+  const expected = await store.read();
+  if (expected !== savedSnapshot) {
+    if (volatileChanges)
+      throw Error(
+        "其他标签页已有变化，本页仍有未保存内容。请先导出，再重新确认恢复。",
       );
-      label.append(input, el("span", null, step.title));
-      steps.append(label);
-    });
-    card.append(symbol, content, steps, editButton("projects", project));
-    strategy?.decorateProject(card, project);
-    root.append(card);
+    state = expected === null ? createWorkspace(false) : parseBackup(expected);
+    savedSnapshot = expected;
+    corruptRaw = null;
+    storageStatus = "saved";
+    render();
   }
-  if (projects.length > visibleProjects.length) {
-    const more = el(
-      "button",
-      "subtle-link more-strategy",
-      `查看全部 ${projects.length} 个事项 →`,
-    );
-    more.addEventListener("click", () => setView("learning"));
-    root.append(more);
-  }
-}
-
-function renderPlans() {
-  const root = $("plan-columns");
-  root.replaceChildren();
-  if (!state.plans.some((p) => p.adoption === "adopted" && matches(p))) {
-    root.append(
-      el(
-        "p",
-        "section-description empty-plans",
-        "还没有正式计划，可以从下方候选规划中选择，也可以自己新建。",
-      ),
-    );
-    return;
-  }
-  const statuses = [
-    ["next", "准备开始", "#b99be9"],
-    ["active", "正在推进", "#7ce8ee"],
-    ["done", "回顾与沉淀", "#c0a1ed"],
-  ];
-  for (const [status, name, color] of statuses) {
-    const section = el("section", "plan-column");
-    section.dataset.status = status;
-    section.style.setProperty("--column", color);
-    const plans = state.plans.filter(
-      (p) => p.adoption === "adopted" && p.status === status && matches(p),
-    );
-    const heading = el("div", "column-heading", name);
-    heading.append(el("span", "count", String(plans.length)));
-    const cards = el("div", "plan-cards");
-    if (!plans.length) empty(cards, "留一点空间给下一步。");
-    for (const plan of plans) {
-      const card = el("article", "plan-card");
-      const title = el("button", "plan-title", plan.title);
-      title.addEventListener("click", () => openRecord("plans", plan.id));
-      const footer = el("div", "plan-footer"),
-        advance = el("button", "advance-plan");
-      advance.setAttribute("aria-label", `推进计划：${plan.title}`);
-      advance.title =
-        status === "done"
-          ? "重新准备"
-          : status === "next"
-            ? "开始推进"
-            : "完成并沉淀";
-      advance.append(icon(status === "done" ? "return" : "arrow-right"));
-      advance.addEventListener("click", () =>
-        commit((s) => {
-          const item = s.plans.find((x) => x.id === plan.id);
-          item.status = { next: "active", active: "done", done: "next" }[
-            status
-          ];
-          item.execution = {
-            next: "not_started",
-            active: "active",
-            done: "completed",
-          }[item.status];
-          item.demo = false;
-        }),
-      );
-      footer.append(tag(plan.direction), advance);
-      if (plan.demo)
-        footer.insertBefore(el("span", "example-label", "示例"), advance);
-      card.append(title, editButton("plans", plan), footer);
-      if (plan.dueDate)
-        card.append(el("p", "plan-meta", dueLabel(plan.dueDate)));
-      strategy?.decoratePlan(card, plan);
-      cards.append(card);
-    }
-    section.append(heading, cards);
-    root.append(section);
-  }
-}
-
-function renderTasks() {
-  const root = $("tasks-list");
-  root.replaceChildren();
-  const tasks = state.tasks.filter(matches);
-  $("task-count").textContent = String(tasks.filter((x) => !x.done).length);
-  const filter = $("task-filter").value;
-  const visible = tasks.filter(
-    (t) => filter === "all" || (filter === "done" ? t.done : !t.done),
-  );
-  if (!visible.length) {
-    empty(
-      root,
-      filter === "done"
-        ? "完成的事情会留在这里。"
-        : "暂时没有待办，从一件小事开始。",
-    );
-    root.firstChild.classList.add("task-empty");
-  }
-  for (const task of visible) {
-    const row = el("div", "task-row" + (task.done ? " done" : ""));
-    const check = el("input");
-    check.type = "checkbox";
-    check.checked = task.done;
-    check.id = "task-" + task.id;
-    check.setAttribute("aria-label", `完成待办：${task.title}`);
-    check.dataset.focusKey = task.id;
-    check.addEventListener("change", () =>
-      commit((s) => {
-        const item = s.tasks.find((x) => x.id === task.id);
-        item.done = check.checked;
-        item.demo = false;
-      }),
-    );
-    const content = el("div", "task-content"),
-      title = el("label", "task-title", task.title);
-    title.htmlFor = check.id;
-    const meta = el("div", "task-meta");
-    meta.append(tag(task.direction));
-    if (task.demo) meta.append(el("span", "example-label", "示例"));
-    if (task.dueDate) meta.append(el("span", null, dueLabel(task.dueDate)));
-    content.append(title, meta);
-    row.append(check, content, editButton("tasks", task));
-    root.append(row);
-  }
-}
-
-function renderNotes() {
-  const root = $("notes-list");
-  root.replaceChildren();
-  const notes = state.notes.filter(matches);
-  $("note-count").textContent = `${notes.length} 条`;
-  if (!notes.length)
-    empty(
-      root,
-      query || direction
-        ? "这个筛选下，还没有随手记。"
-        : "不必想清楚再记录，一句话也可以。",
-    );
-  const limit = view === "notes" || notesExpanded || query ? notes.length : 3;
-  for (const note of notes.slice(0, limit)) {
-    const item = el("article", "note-item"),
-      symbol = el("div", "note-symbol");
-    symbol.append(icon("document"));
-    const body = el("div", "note-body"),
-      meta = el("div", "note-meta");
-    meta.append(
-      tag(note.direction),
-      el(
-        "time",
-        note.demo ? "example-label" : null,
-        note.demo ? "示例" : dateLabel(note.createdAt),
-      ),
-    );
-    body.append(el("p", null, note.body), meta);
-    item.append(symbol, body, editButton("notes", note));
-    root.append(item);
-  }
-  if (notes.length > limit) {
-    const more = el(
-      "button",
-      "subtle-link more-notes",
-      `查看其余 ${notes.length - limit} 条记录 →`,
-    );
-    more.addEventListener("click", () => {
-      notesExpanded = true;
-      renderNotes();
-    });
-    root.append(more);
-  }
-}
-
-function renderSites() {
-  const root = $("sites-list");
-  root.replaceChildren();
-  const sites = state.sites.filter(
-    (s) => !query || s.name.toLocaleLowerCase().includes(query),
-  );
-  for (const site of sites) {
-    const wrap = el("div", "site-tile-wrap"),
-      link = el("a", "dock-tile");
-    link.href = safeUrl(site.url);
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = site.url;
-    const known = {
-      ChatGPT: "swirl",
-      Claude: "spark",
-      ima: "spark",
-      GitHub: "github",
-      arXiv: "code",
-    }[site.name];
-    if (known) link.append(icon(known));
-    else {
-      const letter = el("span", "site-letter", Array.from(site.name)[0]);
-      letter.setAttribute("aria-hidden", "true");
-      link.append(letter);
-    }
-    if (site.name === "Claude") link.classList.add("site-claude");
-    if (site.name === "ima") link.classList.add("site-ima");
-    link.append(el("span", null, site.name));
-    wrap.append(link, editButton("sites", site));
-    root.append(wrap);
-  }
-  if (!sites.length)
-    empty(root, query ? "没有匹配的网站。" : "添加你的常用网站。");
-}
-
-function renderExperiments() {
-  const root = $("experiment-list");
-  root.replaceChildren();
-  const experiments = state.experiments.filter(matches);
-  if (!experiments.length)
-    empty(root, "下一个实验，可以从一个很小的问题开始。", "experiments");
-  for (const experiment of experiments) {
-    const card = el("article", "experiment-card"),
-      top = el("div", "experiment-top");
-    top.append(
-      el("h3", null, experiment.title),
-      editButton("experiments", experiment),
-    );
-    const footer = el("div", "experiment-footer");
-    footer.append(
-      tag(experiment.direction),
-      el(
-        "span",
-        "experiment-status",
-        { idea: "构想中", building: "开发中", ready: "已完成" }[
-          experiment.status
-        ],
-      ),
-    );
-    if (experiment.url) {
-      const a = el("a", null, "打开工具 ↗");
-      a.href = safeUrl(experiment.url);
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      footer.append(a);
-    }
-    card.append(
-      top,
-      el("p", null, experiment.description || "还没有补充描述。"),
-      footer,
-    );
-    root.append(card);
-  }
-  $("lab-library").hidden = view !== "lab" && !(query && experiments.length);
+  const before = serializeBackup(state),
+    stateToken = stable(state);
+  if (
+    !(await confirmAction(
+      "替换当前工作区？",
+      "备份已通过校验。恢复会替换当前记录，请确认选择正确的版本。",
+      "确认恢复",
+    ))
+  )
+    return false;
+  if (backupUI && !(await backupUI.beforeRestore(before))) return false;
+  const raw = serializeBackup(imported);
+  savedSnapshot = await store.update((current) => {
+    if (current !== expected || stable(state) !== stateToken)
+      throw Error("确认期间工作区已有变化，请重新选择并确认恢复。");
+    return raw;
+  });
+  state = imported;
+  volatileChanges = false;
+  corruptRaw = null;
+  storageStatus = "saved";
+  direction = "";
+  query = "";
+  $("global-search").value = "";
+  render();
+  backupUI?.schedule();
+  settingsMessage("已恢复工作区。");
+  return true;
 }
 
 function updateStorageStatus() {
@@ -687,12 +333,7 @@ function updateStorageStatus() {
 
 function render() {
   const focused = document.activeElement?.dataset?.focusKey;
-  renderProjects();
-  renderPlans();
-  renderTasks();
-  renderNotes();
-  renderSites();
-  renderExperiments();
+  workspaceViews?.render();
   updateStorageStatus();
   strategy?.render();
   document.querySelectorAll("[data-direction]").forEach((b) => {
@@ -763,196 +404,6 @@ for (const d of DIRECTIONS) {
   $("direction-strip").append(strip);
 }
 
-function updateRecordFields() {
-  const kind = $("record-kind").value;
-  $("record-heading").textContent =
-    (editing ? "编辑" : "新建") +
-    {
-      tasks: "待办事项",
-      projects: "学习任务",
-      plans: "计划",
-      notes: "随手记",
-      sites: "常用网站",
-      experiments: "实验",
-    }[kind];
-  $("title-field").hidden = kind === "notes";
-  $("record-title").required = kind !== "notes";
-  $("record-title").maxLength = kind === "sites" ? 80 : 300;
-  $("body-field").hidden = !["notes", "experiments"].includes(kind);
-  $("record-body").required = kind === "notes";
-  $("direction-field").hidden = kind === "sites";
-  $("due-field").hidden = !["tasks", "plans"].includes(kind);
-  $("steps-field").hidden = kind !== "projects";
-  $("status-field").hidden = !["tasks", "plans", "experiments"].includes(kind);
-  $("url-field").hidden = !["sites", "experiments"].includes(kind);
-  $("record-url").required = kind === "sites";
-  $("url-hint").textContent =
-    kind === "experiments"
-      ? "可不填，完成后再补上工具链接"
-      : "使用 https:// 或 http:// 地址";
-  $("record-status").replaceChildren();
-  const options =
-    kind === "plans"
-      ? [
-          ["next", "准备开始"],
-          ["active", "正在推进"],
-          ["done", "回顾与沉淀"],
-        ]
-      : kind === "tasks"
-        ? [
-            ["pending", "待完成"],
-            ["done", "已完成"],
-          ]
-        : [
-            ["idea", "构想中"],
-            ["building", "开发中"],
-            ["ready", "已完成"],
-          ];
-  options.forEach(([value, label]) =>
-    $("record-status").append(new Option(label, value)),
-  );
-  $("record-error").hidden = true;
-  strategy?.fillEditor(
-    kind,
-    editing ? state[kind].find((x) => x.id === editing.id) : null,
-  );
-}
-
-function openRecord(kind = "tasks", id = null) {
-  if (["goals", "archives"].includes(kind)) return strategy.edit(kind, id);
-  const item = id ? state[kind].find((x) => x.id === id) : null;
-  if (id && !item) return;
-  editing = item ? { kind, id, original: recordSignature(item) } : null;
-  $("record-form").reset();
-  $("record-kind").value = kind;
-  $("kind-field").hidden = !!editing;
-  updateRecordFields();
-  $("record-title").value = item?.title || item?.name || "";
-  $("record-direction").value = item?.direction ?? direction;
-  $("record-body").value = item?.body || item?.description || "";
-  $("record-steps").value = item?.steps?.map((x) => x.title).join("\n") || "";
-  $("record-due").value = item?.dueDate || "";
-  $("record-url").value = item?.url || "";
-  if (item)
-    $("record-status").value =
-      kind === "tasks" ? (item.done ? "done" : "pending") : item.status || "";
-  $("record-delete").hidden = !editing;
-  $("record-dialog").showModal();
-  (kind === "notes" ? $("record-body") : $("record-title")).focus();
-}
-
-function preserveSteps(text, old = []) {
-  const byTitle = new Map();
-  for (const step of old) {
-    if (!byTitle.has(step.title)) byTitle.set(step.title, []);
-    byTitle.get(step.title).push(step);
-  }
-  return text
-    .split(/\r?\n/)
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .map(
-      (title) =>
-        byTitle.get(title)?.shift() || { id: uid(), title, done: false },
-    );
-}
-
-function recordSignature(item) {
-  return stable(item);
-}
-
-$("record-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const kind = editing?.kind || $("record-kind").value;
-  const previous = editing
-    ? state[kind].find((x) => x.id === editing.id)
-    : null;
-  const title = $("record-title").value.trim();
-  const item = { ...previous, id: previous?.id || uid() };
-  try {
-    if (kind === "sites") {
-      item.name = title;
-      item.url = safeUrl($("record-url").value);
-      if (!item.url)
-        throw new Error(
-          "请输入有效的 HTTP(S) 网址，地址中不能包含用户名或密码。",
-        );
-    } else {
-      item.direction = $("record-direction").value;
-      item.createdAt = previous?.createdAt || new Date().toISOString();
-      item.demo = false;
-      if (kind === "notes") item.body = $("record-body").value.trim();
-      else item.title = title;
-      if (["tasks", "plans"].includes(kind)) {
-        delete item.dueDate;
-        if ($("record-due").value) item.dueDate = $("record-due").value;
-      }
-      if (kind === "tasks") item.done = $("record-status").value === "done";
-      if (kind === "projects")
-        item.steps = preserveSteps($("record-steps").value, previous?.steps);
-      if (kind === "plans") item.status = $("record-status").value;
-      if (kind === "experiments") {
-        item.description = $("record-body").value.trim();
-        item.status = $("record-status").value;
-        item.url = $("record-url").value.trim()
-          ? safeUrl($("record-url").value)
-          : "";
-        if (item.url === null)
-          throw new Error("实验链接需要有效的 HTTP(S) 地址。");
-      }
-    }
-    strategy.readEditor(kind, item);
-    const candidate = structuredClone(state);
-    if (previous)
-      candidate[kind] = candidate[kind].map((x) =>
-        x.id === previous.id ? item : x,
-      );
-    else candidate[kind].unshift(item);
-    validateWorkspace(candidate);
-    if (
-      !commit((s) => {
-        if (editing) {
-          const index = s[kind].findIndex((x) => x.id === editing.id);
-          if (
-            index < 0 ||
-            recordSignature(s[kind][index]) !== editing.original
-          ) {
-            throw new Error(
-              "这条记录已在其他标签页修改或删除。当前输入已保留，请复制后重新打开最新记录。",
-            );
-          }
-          s[kind][index] = item;
-        } else {
-          s[kind].unshift(item);
-        }
-      })
-    )
-      return;
-    if (direction && item.direction !== direction && kind !== "sites")
-      direction = "";
-    query = "";
-    $("global-search").value = "";
-    if (kind === "experiments") setView("lab");
-    else if (view !== "overview")
-      setView(
-        {
-          tasks: "tasks",
-          projects: "learning",
-          plans: "learning",
-          notes: "notes",
-          sites: view,
-        }[kind],
-      );
-    render();
-    $("record-dialog").close();
-    if (storageStatus !== "unavailable")
-      toast(previous ? "记录已更新" : "已放进你的工作区");
-  } catch (error) {
-    $("record-error").textContent = error.message;
-    $("record-error").hidden = false;
-  }
-});
-
 function confirmAction(title, description, accept = "确认") {
   $("confirm-heading").textContent = title;
   $("confirm-description").textContent = description;
@@ -975,27 +426,6 @@ $("confirm-accept").addEventListener("click", () =>
 $("confirm-cancel").addEventListener("click", () =>
   $("confirm-dialog").close("cancel"),
 );
-$("record-delete").addEventListener("click", async () => {
-  if (!editing) return;
-  const target = { ...editing };
-  if (
-    !(await confirmAction(
-      "删除这条记录？",
-      "删除后无法从页面撤销。重要内容建议先导出备份。",
-      "删除",
-    ))
-  )
-    return;
-  if (
-    commit((s) => {
-      s[target.kind] = s[target.kind].filter((x) => x.id !== target.id);
-    })
-  ) {
-    $("record-dialog").close();
-    toast("记录已删除");
-  }
-});
-
 function download(text, name, type = "application/json;charset=utf-8") {
   const url = URL.createObjectURL(new Blob([text], { type })),
     a = el("a");
@@ -1018,6 +448,7 @@ function exportWorkspace() {
 function openSettings() {
   $("settings-message").textContent = "";
   updateStorageStatus();
+  backupUI?.render();
   $("settings-dialog").showModal();
 }
 function settingsMessage(text, error = false) {
@@ -1039,27 +470,8 @@ $("import-file").addEventListener("change", async () => {
   $("import-file").value = "";
   if (!file) return;
   try {
-    if (file.size > 2 * 1024 * 1024) throw new Error("备份文件不能超过 2 MB");
-    const imported = parseBackup(await file.text());
-    if (
-      !(await confirmAction(
-        "替换当前工作区？",
-        "备份已通过校验。导入会替换当前所有记录，包括常用网站。建议先导出当前工作区。",
-        "确认恢复",
-      ))
-    )
-      return;
-    // Write first: if persistence fails, the current in-memory workspace is kept.
-    savedSnapshot = saveWorkspace(storage, imported);
-    volatileChanges = false;
-    state = imported;
-    corruptRaw = null;
-    storageStatus = "saved";
-    direction = "";
-    query = "";
-    $("global-search").value = "";
-    render();
-    settingsMessage("已从备份恢复工作区。");
+    if (file.size > MAX_BACKUP_BYTES) throw Error("备份文件不能超过 32 MiB");
+    await restoreWorkspace(parseBackup(await file.text()));
   } catch (error) {
     settingsMessage(
       "无法恢复：" + error.message + "。当前记录没有被替换。",
@@ -1076,7 +488,7 @@ $("clear-examples").addEventListener("click", async () => {
     ))
   )
     return;
-  if (commit((s) => Object.assign(s, removeExamples(s))))
+  if (await commit((s) => Object.assign(s, removeExamples(s))))
     settingsMessage("示例已清除，你自己的记录已保留。");
 });
 $("export-raw").addEventListener("click", () => {
@@ -1088,6 +500,8 @@ $("export-raw").addEventListener("click", () => {
     );
 });
 $("reset-workspace").addEventListener("click", async () => {
+  if (corruptRaw === null) return;
+  const expected = corruptRaw;
   if (
     !(await confirmAction(
       "重新建立工作区？",
@@ -1098,113 +512,25 @@ $("reset-workspace").addEventListener("click", async () => {
     return;
   try {
     const fresh = createWorkspace(false);
-    savedSnapshot = saveWorkspace(storage, fresh);
+    savedSnapshot = await store.update((current) => {
+      if (current !== expected)
+        throw Error("工作区已有变化，请重新读取后再决定是否重建。");
+      return serializeBackup(fresh);
+    });
     volatileChanges = false;
     state = fresh;
     corruptRaw = null;
     storageStatus = "saved";
     render();
     settingsMessage("已建立空白工作区。");
-  } catch {
-    settingsMessage("浏览器仍无法保存，原始数据未被替换。", true);
-  }
-});
-
-function openTool(kind) {
-  if (kind === "focus") {
-    $("focus-minutes").value = clock.duration / 60;
-    $("focus-dialog").showModal();
-    return;
-  }
-  $("tool-heading").textContent =
-    kind === "text" ? "文本处理 · 字符与行数" : "JSON 整理";
-  const content = $("tool-content");
-  content.replaceChildren();
-  const input = el("textarea", "tool-input");
-  input.id = "tool-input";
-  input.setAttribute(
-    "aria-label",
-    kind === "text" ? "待统计文本" : "待整理 JSON",
-  );
-  input.placeholder =
-    kind === "text" ? "在这里输入或粘贴文本…" : '{"hello": "world"}';
-  input.spellcheck = false;
-  const result = el("div", "tool-result");
-  result.id = "tool-result";
-  result.setAttribute("role", "status");
-  content.append(input);
-  if (kind === "text") {
-    const update = () => {
-      const stats = textStatistics(input.value);
-      result.textContent = `${stats.characters} 个字符 · ${stats.nonWhitespace} 个非空白字符 · ${stats.lines} 行`;
-    };
-    input.addEventListener("input", update);
-    update();
-  } else {
-    const format = el("button", "button primary", "格式化并检查");
-    format.id = "json-format";
-    format.addEventListener("click", () => {
-      try {
-        input.value = formatJson(input.value);
-        result.classList.remove("error");
-        result.textContent = "✓ JSON 语法有效，已格式化。";
-      } catch (error) {
-        result.classList.add("error");
-        result.textContent = "JSON 无效：" + error.message;
-      }
-    });
-    content.append(format);
-    result.textContent = "输入 JSON 后点击检查；失败时会保留原始输入。";
-  }
-  content.append(result);
-  $("tool-dialog").showModal();
-  input.focus();
-}
-
-let wasRunning = false;
-function updateClock() {
-  const value = clock.read();
-  const minutes = Math.floor(value.remainingSeconds / 60),
-    seconds = value.remainingSeconds % 60;
-  $("focus-time").textContent =
-    String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
-  $("focus-toggle").replaceChildren(icon(value.running ? "pause" : "play"));
-  $("focus-toggle").setAttribute(
-    "aria-label",
-    value.running ? "暂停专注" : "开始专注",
-  );
-  $("focus-toggle").title = value.running ? "暂停专注" : "开始专注";
-  if (wasRunning && !value.running && value.remainingSeconds === 0)
-    toast("这一段专注完成了，休息一下。");
-  wasRunning = value.running;
-}
-$("focus-toggle").addEventListener("click", () => {
-  if (clock.read().running) clock.pause();
-  else clock.start();
-  updateClock();
-});
-$("focus-reset").addEventListener("click", () => {
-  clock.reset();
-  updateClock();
-});
-$("focus-settings").addEventListener("click", () => openTool("focus"));
-$("focus-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  try {
-    clock.reset(Number($("focus-minutes").value) * 60);
-    updateClock();
-    $("focus-dialog").close();
   } catch (error) {
-    toast(error.message);
+    settingsMessage(
+      error.message || "浏览器仍无法保存，原始数据未被替换。",
+      true,
+    );
   }
 });
-document.querySelectorAll("[data-minutes]").forEach((b) =>
-  b.addEventListener("click", () => {
-    $("focus-minutes").value = b.dataset.minutes;
-  }),
-);
-setInterval(updateClock, 500);
-document.addEventListener("visibilitychange", updateClock);
+
 document
   .querySelectorAll("[data-tool]")
   .forEach((b) => b.addEventListener("click", () => openTool(b.dataset.tool)));
@@ -1226,8 +552,8 @@ $("quick-add").addEventListener("click", () =>
       "tasks",
   ),
 );
-$("record-kind").addEventListener("change", updateRecordFields);
-$("task-filter").addEventListener("change", renderTasks);
+
+$("task-filter").addEventListener("change", render);
 $("global-search").addEventListener("input", () => {
   query = $("global-search").value.trim().toLocaleLowerCase();
   render();
@@ -1240,7 +566,7 @@ $("clear-filters").addEventListener("click", () => {
   $("note-direction").value = "";
   render();
 });
-$("task-quick").addEventListener("submit", (event) => {
+$("task-quick").addEventListener("submit", async (event) => {
   event.preventDefault();
   const title = $("task-text").value.trim();
   if (!title) {
@@ -1248,7 +574,7 @@ $("task-quick").addEventListener("submit", (event) => {
     return;
   }
   if (
-    commit((s) =>
+    await commit((s) =>
       s.tasks.unshift({
         id: uid(),
         title,
@@ -1261,10 +587,10 @@ $("task-quick").addEventListener("submit", (event) => {
   ) {
     $("task-text").value = "";
     $("task-filter").value = "pending";
-    renderTasks();
+    render();
   }
 });
-$("note-form").addEventListener("submit", (event) => {
+$("note-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const body = $("note-text").value.trim();
   if (!body) {
@@ -1273,7 +599,7 @@ $("note-form").addEventListener("submit", (event) => {
   }
   const noteDirection = $("note-direction").value;
   if (
-    commit((s) =>
+    await commit((s) =>
       s.notes.unshift({
         id: uid(),
         body,
@@ -1303,7 +629,7 @@ document.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("beforeunload", (event) => {
-  if (storageStatus === "unavailable") {
+  if (storageStatus === "unavailable" || pendingWrites > 0) {
     event.preventDefault();
     event.returnValue = "";
   }
@@ -1313,6 +639,7 @@ strategy = initStrategy({
   refresh: refreshForPreview,
   error: () => $("toast").textContent,
   direction: () => direction,
+  query: () => query,
   view: () => view,
   matches,
   el,
@@ -1323,8 +650,62 @@ strategy = initStrategy({
   render,
   setView,
 });
-updateClock();
+recordEditor = initRecordEditor({
+  el,
+  icon,
+  commit,
+  toast,
+  error: () => $("toast").textContent,
+  confirm: confirmAction,
+  state: () => state,
+  strategy: () => strategy,
+  direction: () => direction,
+  storageStatus: () => storageStatus,
+  afterSave: (kind, item) => {
+    if (direction && item.direction !== direction && kind !== "sites")
+      direction = "";
+    query = "";
+    $("global-search").value = "";
+    if (kind === "experiments") setView("lab");
+    else if (view !== "overview")
+      setView(
+        {
+          tasks: "tasks",
+          projects: "learning",
+          plans: "learning",
+          notes: "notes",
+          sites: view,
+        }[kind],
+      );
+    render();
+  },
+});
+workspaceViews = initWorkspaceViews({
+  el,
+  icon,
+  commit,
+  openRecord,
+  matches,
+  setView,
+  state: () => state,
+  strategy: () => strategy,
+  query: () => query,
+  direction: () => direction,
+  view: () => view,
+});
+tools = initTools({ el, icon, toast });
+backupUI = await initBackupSettings({
+  el,
+  store,
+  state: () => state,
+  restore: restoreWorkspace,
+  confirm: confirmAction,
+});
+initLayout({ render });
+initAbout({ el });
 setView("overview");
+document.documentElement.dataset.ready = "true";
+backupUI.schedule();
 // A private standalone preview may supply a local update package; it still requires preview confirmation.
 const previewPacket = document.getElementById("private-preview-data");
 if (previewPacket) strategy.importUpdate(JSON.parse(previewPacket.textContent));

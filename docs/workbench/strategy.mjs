@@ -1,4 +1,4 @@
-import * as legacy from "./workspace-v1.mjs?v=20261105-strategy2";
+import * as legacy from "#workbench/workspace-v1";
 
 export const COLLECTIONS = [
   "tasks",
@@ -27,7 +27,8 @@ const PROTECTED = new Set([
   "origin",
   "nextStep",
 ]);
-const LIMIT = 2 * 1024 * 1024;
+import { MAX_BACKUP_BYTES } from "#workbench/limits";
+const LIMIT = MAX_BACKUP_BYTES;
 const own = (value, key) => Object.hasOwn(value, key);
 const plain = (value) =>
   value && typeof value === "object" && !Array.isArray(value);
@@ -294,12 +295,13 @@ function references(state) {
   state.projects.forEach((p) => visit(p.id));
 }
 
+/** @returns {import("./types.js").Workspace} */
 export function normalizeState(input) {
   requireObject(input, "工作区");
   const state = {};
   for (const key of COLLECTIONS) {
     const array = input[key] ?? (BASE.includes(key) ? null : []);
-    if (!Array.isArray(array) || array.length > 1000)
+    if (!Array.isArray(array) || array.length > 10000)
       throw Error(key + "格式或数量不正确");
     state[key] = array.map((r) => normalizeRecord(key, r));
     unique(state[key], key);
@@ -330,11 +332,11 @@ export function normalizeState(input) {
       fingerprint: text(batch.fingerprint, "批次指纹", 128, true),
     })),
   };
-  if (state.imports.batches.length > 1000) throw Error("归档批次数量超限");
+  if (state.imports.batches.length > 10000) throw Error("归档批次数量超限");
   unique(state.imports.batches, "归档批次");
   if (
     !Array.isArray(input.revisions ?? []) ||
-    (input.revisions ?? []).length > 3000
+    (input.revisions ?? []).length > 50000
   )
     throw Error("修订记录数量超限");
   state.revisions = (input.revisions ?? []).map((rev) => {
@@ -350,7 +352,7 @@ export function normalizeState(input) {
     };
   });
   references(state);
-  return state;
+  return /** @type {import("./types.js").Workspace} */ (state);
 }
 
 export function migrateLegacy(input) {
@@ -412,11 +414,12 @@ export function createStrategyState(examples = true) {
   return normalizeState(state);
 }
 
+/** @returns {import("./types.js").UpdatePacket} */
 export function parseUpdate(value) {
   let packet;
   if (typeof value === "string") {
     if (new TextEncoder().encode(value).length > LIMIT)
-      throw Error("归档文件不能超过 2 MiB");
+      throw Error("归档文件不能超过 32 MiB");
     try {
       packet = JSON.parse(value);
     } catch {
@@ -432,7 +435,7 @@ export function parseUpdate(value) {
     if (
       !COLLECTIONS.includes(key) ||
       !Array.isArray(records) ||
-      records.length > 1000
+      records.length > 10000
     )
       throw Error("归档记录类型或数量不正确");
     records.forEach((r) => {
@@ -442,7 +445,7 @@ export function parseUpdate(value) {
     unique(records, key);
   }
   if (new TextEncoder().encode(JSON.stringify(packet)).length > LIMIT)
-    throw Error("归档文件不能超过 2 MiB");
+    throw Error("归档文件不能超过 32 MiB");
   return packet;
 }
 
@@ -490,6 +493,7 @@ function rewrite(record, collection, aliases) {
   return r;
 }
 
+/** @returns {Promise<import("./types.js").ImportPreview>} */
 export async function prepareUpdate(input, raw, options = {}) {
   const state = normalizeState(input),
     packet = parseUpdate(raw),
@@ -701,7 +705,7 @@ export function applyUpdate(input, preview, decisions = {}) {
     });
   const normalized = normalizeState(result);
   if (new TextEncoder().encode(JSON.stringify(normalized)).length > LIMIT)
-    throw Error("合并后超过 2 MiB 上限，请先备份并整理内容");
+    throw Error("合并后超过 32 MiB 上限，请先备份并整理内容");
   return normalized;
 }
 

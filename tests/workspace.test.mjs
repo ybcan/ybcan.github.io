@@ -217,3 +217,18 @@ test("focus countdown uses elapsed time, pauses precisely and expires without dr
   assert.throws(() => clock.reset(0));
   assert.throws(() => clock.reset(20000));
 });
+test("v1 backups larger than the old 2 MiB limit migrate through the current import limit", () => {
+  const state = createWorkspace(false);
+  state.notes = Array.from({ length: 300 }, (_, i) => ({
+    id: "old-large-" + i,
+    body: "学".repeat(3000),
+    direction: "",
+  }));
+  const raw = JSON.stringify({
+    format: "personal-cockpit",
+    version: 1,
+    data: state,
+  });
+  assert.ok(new TextEncoder().encode(raw).length > 2 * 1024 * 1024);
+  assert.equal(parseBackup(raw).notes.length, 300);
+});

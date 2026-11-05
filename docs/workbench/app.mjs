@@ -12,7 +12,10 @@ import {
   textStatistics,
   formatJson,
   FocusClock,
-} from "./workspace.mjs";
+} from "./workspace.mjs?v=20261105-strategy2";
+
+import { initStrategy } from "./strategy-ui.mjs?v=20261105-strategy2";
+import { trackRevisions, stable } from "./strategy.mjs?v=20261105-strategy2";
 
 const $ = (id) => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
@@ -119,16 +122,22 @@ const names = {
   sites: "网站",
   experiments: "实验",
 };
+let strategy;
 const viewInfo = {
+  archives: [
+    "积累与归档",
+    "每一次推进，都留下积累。",
+    "学习记录、关键结论和完成历史，随时回看与继续。",
+  ],
   overview: [
     "总览",
     "把今天，连到长远。",
     "学习、行动、想法与实验，在一个工作空间里继续。",
   ],
   learning: [
-    "学习与计划",
-    "让每一步，都有积累。",
-    "把想掌握的东西拆成步骤，让计划慢慢变成现实。",
+    "目标与项目",
+    "让每一步，都连到目标。",
+    "从长期目标找到学习、实践与研究，明确当前下一步。",
   ],
   tasks: [
     "待办事项",
@@ -171,8 +180,11 @@ function tag(id) {
   } else node.textContent = "未归类";
   return node;
 }
-function matches(item) {
-  if (direction && item.direction !== direction) return false;
+function matches(item, useGoal = true) {
+  if (useGoal !== false && strategy && !strategy.goalMatches(item))
+    return false;
+  if (direction && !(item.directionIds || [item.direction]).includes(direction))
+    return false;
   return (
     !query ||
     [
@@ -180,6 +192,18 @@ function matches(item) {
       item.name,
       item.body,
       item.description,
+      item.summary,
+      item.why,
+      item.nextStep,
+      item.question,
+      item.answer,
+      item.feedback,
+      item.excerpt,
+      item.nextQuestion,
+      item.nextAction,
+      ...(item.goalIds || []).map(
+        (id) => state.goals.find((g) => g.id === id)?.title,
+      ),
       ...(item.steps || []).map((x) => x.title),
     ]
       .filter(Boolean)
@@ -225,7 +249,7 @@ function empty(parent, message, kind) {
 
 // A bad stored snapshot is never implicitly replaced. Volatile changes remain
 // visible and exportable if the browser refuses a write.
-function commit(change) {
+function commit(change, options = {}) {
   if (corruptRaw !== null) {
     toast("请先在数据设置中恢复备份或重建工作区，原始记录未被覆盖。");
     return false;
@@ -260,7 +284,7 @@ function commit(change) {
   try {
     next = structuredClone(base);
     change(next);
-    next = validateWorkspace(next);
+    next = validateWorkspace(trackRevisions(base, next));
     serializeBackup(next);
   } catch (error) {
     toast(error.message);
@@ -271,6 +295,10 @@ function commit(change) {
     volatileChanges = false;
     storageStatus = "saved";
   } catch {
+    if (options.requirePersistence) {
+      toast("浏览器未能保存，归档未合并。请导出备份后整理空间，再重试。");
+      return false;
+    }
     savedSnapshot = baseline;
     volatileChanges = true;
     storageStatus = "unavailable";
@@ -282,11 +310,35 @@ function commit(change) {
   return true;
 }
 
+// Refreshing an import must compare against the current persisted snapshot.
+// Unsaved local changes remain exportable and are never discarded here.
+function refreshForPreview() {
+  if (corruptRaw !== null) throw Error("请先恢复异常工作区，再合并归档。");
+  let raw;
+  try {
+    raw = storage.getItem(STORAGE_KEY);
+  } catch {
+    throw Error("无法读取浏览器存储，归档文件已保留，请恢复存储后重试。");
+  }
+  if (raw === savedSnapshot) return;
+  if (volatileChanges)
+    throw Error(
+      "本页有未保存内容，其他标签页也有更新。请先导出备份，再刷新后合并。",
+    );
+  const latest = raw === null ? createWorkspace(false) : parseBackup(raw);
+  state = latest;
+  savedSnapshot = raw;
+  storageStatus = raw === null ? "new" : "saved";
+  render();
+}
+
 function renderProjects() {
   const root = $("projects-list");
   root.replaceChildren();
-  const projects = state.projects.filter(matches);
-  $("project-summary").textContent = `${projects.length} 个学习项目`;
+  const projects = state.projects.filter(
+    (p) => p.adoption === "adopted" && matches(p),
+  );
+  $("project-summary").textContent = `${projects.length} 个跟踪事项`;
   if (!projects.length)
     empty(
       root,
@@ -295,7 +347,11 @@ function renderProjects() {
         : "把想学的技术或方法，拆成可以完成的步骤。",
       "projects",
     );
-  for (const project of projects) {
+  const visibleProjects =
+    view === "overview" && !query && !direction && !strategy?.goalId()
+      ? projects.slice(0, 3)
+      : projects;
+  for (const project of visibleProjects) {
     const card = el("article", "project");
     const symbol = el("div", "project-icon");
     symbol.append(
@@ -341,13 +397,33 @@ function renderProjects() {
       steps.append(label);
     });
     card.append(symbol, content, steps, editButton("projects", project));
+    strategy?.decorateProject(card, project);
     root.append(card);
+  }
+  if (projects.length > visibleProjects.length) {
+    const more = el(
+      "button",
+      "subtle-link more-strategy",
+      `查看全部 ${projects.length} 个事项 →`,
+    );
+    more.addEventListener("click", () => setView("learning"));
+    root.append(more);
   }
 }
 
 function renderPlans() {
   const root = $("plan-columns");
   root.replaceChildren();
+  if (!state.plans.some((p) => p.adoption === "adopted" && matches(p))) {
+    root.append(
+      el(
+        "p",
+        "section-description empty-plans",
+        "还没有正式计划，可以从下方候选规划中选择，也可以自己新建。",
+      ),
+    );
+    return;
+  }
   const statuses = [
     ["next", "准备开始", "#b99be9"],
     ["active", "正在推进", "#7ce8ee"],
@@ -357,7 +433,9 @@ function renderPlans() {
     const section = el("section", "plan-column");
     section.dataset.status = status;
     section.style.setProperty("--column", color);
-    const plans = state.plans.filter((p) => p.status === status && matches(p));
+    const plans = state.plans.filter(
+      (p) => p.adoption === "adopted" && p.status === status && matches(p),
+    );
     const heading = el("div", "column-heading", name);
     heading.append(el("span", "count", String(plans.length)));
     const cards = el("div", "plan-cards");
@@ -382,6 +460,11 @@ function renderPlans() {
           item.status = { next: "active", active: "done", done: "next" }[
             status
           ];
+          item.execution = {
+            next: "not_started",
+            active: "active",
+            done: "completed",
+          }[item.status];
           item.demo = false;
         }),
       );
@@ -391,6 +474,7 @@ function renderPlans() {
       card.append(title, editButton("plans", plan), footer);
       if (plan.dueDate)
         card.append(el("p", "plan-meta", dueLabel(plan.dueDate)));
+      strategy?.decoratePlan(card, plan);
       cards.append(card);
     }
     section.append(heading, cards);
@@ -567,7 +651,15 @@ function renderExperiments() {
 }
 
 function updateStorageStatus() {
-  const collections = ["tasks", "projects", "plans", "notes", "experiments"];
+  const collections = [
+    "tasks",
+    "projects",
+    "plans",
+    "notes",
+    "experiments",
+    "goals",
+    "archives",
+  ];
   const count = collections.reduce((n, key) => n + state[key].length, 0);
   const examples = collections.some((key) => state[key].some((x) => x.demo));
   $("example-status").textContent = examples
@@ -582,7 +674,9 @@ function updateStorageStatus() {
         ? "仅暂存本页，请及时导出"
         : storageStatus === "new"
           ? "示例内容，尚未保存个人记录"
-          : `已在本地保存 ${count} 条记录`;
+          : storageStatus === "migrated"
+            ? "已读取旧记录；下次保存写入新版，旧版备份保留"
+            : `已在本地保存 ${count} 条记录`;
   $("storage-alert").hidden = !warning;
   $("storage-message").textContent =
     corruptRaw !== null
@@ -600,14 +694,18 @@ function render() {
   renderSites();
   renderExperiments();
   updateStorageStatus();
+  strategy?.render();
   document.querySelectorAll("[data-direction]").forEach((b) => {
     b.classList.toggle("active", b.dataset.direction === direction);
     b.setAttribute("aria-pressed", String(b.dataset.direction === direction));
   });
-  $("filter-bar").hidden = !direction && !query;
+  $("filter-bar").hidden = !direction && !query && !strategy?.goalId();
   $("filter-label").textContent = [
     DIRECTIONS.find((d) => d.id === direction)?.name,
     query ? `搜索：${$("global-search").value}` : "",
+    strategy?.goalId()
+      ? "目标：" + state.goals.find((g) => g.id === strategy.goalId())?.title
+      : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -628,7 +726,7 @@ function setView(next) {
     if (b.dataset.view === next) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
   });
-  $("overview-grid").hidden = next === "lab";
+  $("overview-grid").hidden = ["lab", "archives"].includes(next);
   $("overview-grid").classList.toggle("single-column", next !== "overview");
   $("learning-workspace").hidden = !["overview", "learning"].includes(next);
   $("right-column").hidden = !["overview", "tasks", "notes"].includes(next);
@@ -656,6 +754,7 @@ for (const d of DIRECTIONS) {
     b.setAttribute("aria-pressed", "false");
     b.addEventListener("click", () => {
       direction = direction === d.id ? "" : d.id;
+      strategy?.clearGoal();
       $("note-direction").value = direction;
       render();
     });
@@ -713,9 +812,14 @@ function updateRecordFields() {
     $("record-status").append(new Option(label, value)),
   );
   $("record-error").hidden = true;
+  strategy?.fillEditor(
+    kind,
+    editing ? state[kind].find((x) => x.id === editing.id) : null,
+  );
 }
 
 function openRecord(kind = "tasks", id = null) {
+  if (["goals", "archives"].includes(kind)) return strategy.edit(kind, id);
   const item = id ? state[kind].find((x) => x.id === id) : null;
   if (id && !item) return;
   editing = item ? { kind, id, original: recordSignature(item) } : null;
@@ -754,21 +858,7 @@ function preserveSteps(text, old = []) {
 }
 
 function recordSignature(item) {
-  return JSON.stringify(item, [
-    "id",
-    "name",
-    "title",
-    "body",
-    "direction",
-    "demo",
-    "createdAt",
-    "dueDate",
-    "done",
-    "steps",
-    "status",
-    "description",
-    "url",
-  ]);
+  return stable(item);
 }
 
 $("record-form").addEventListener("submit", (event) => {
@@ -778,7 +868,7 @@ $("record-form").addEventListener("submit", (event) => {
     ? state[kind].find((x) => x.id === editing.id)
     : null;
   const title = $("record-title").value.trim();
-  const item = { id: previous?.id || uid() };
+  const item = { ...previous, id: previous?.id || uid() };
   try {
     if (kind === "sites") {
       item.name = title;
@@ -793,8 +883,10 @@ $("record-form").addEventListener("submit", (event) => {
       item.demo = false;
       if (kind === "notes") item.body = $("record-body").value.trim();
       else item.title = title;
-      if (["tasks", "plans"].includes(kind) && $("record-due").value)
-        item.dueDate = $("record-due").value;
+      if (["tasks", "plans"].includes(kind)) {
+        delete item.dueDate;
+        if ($("record-due").value) item.dueDate = $("record-due").value;
+      }
       if (kind === "tasks") item.done = $("record-status").value === "done";
       if (kind === "projects")
         item.steps = preserveSteps($("record-steps").value, previous?.steps);
@@ -809,6 +901,7 @@ $("record-form").addEventListener("submit", (event) => {
           throw new Error("实验链接需要有效的 HTTP(S) 地址。");
       }
     }
+    strategy.readEditor(kind, item);
     const candidate = structuredClone(state);
     if (previous)
       candidate[kind] = candidate[kind].map((x) =>
@@ -1140,6 +1233,7 @@ $("global-search").addEventListener("input", () => {
   render();
 });
 $("clear-filters").addEventListener("click", () => {
+  strategy.clearGoal();
   query = "";
   direction = "";
   $("global-search").value = "";
@@ -1214,5 +1308,23 @@ window.addEventListener("beforeunload", (event) => {
     event.returnValue = "";
   }
 });
+strategy = initStrategy({
+  state: () => state,
+  refresh: refreshForPreview,
+  error: () => $("toast").textContent,
+  direction: () => direction,
+  view: () => view,
+  matches,
+  el,
+  icon,
+  commit,
+  toast,
+  openRecord,
+  render,
+  setView,
+});
 updateClock();
 setView("overview");
+// A private standalone preview may supply a local update package; it still requires preview confirmation.
+const previewPacket = document.getElementById("private-preview-data");
+if (previewPacket) strategy.importUpdate(JSON.parse(previewPacket.textContent));

@@ -13,8 +13,9 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 5 56 18v28L32 59 8 46V18ZM8 18l24 14 24-14M32 32v27M32 5v27' fill='none' stroke='%237ce8ee' stroke-width='4'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./workbench/styles.css" />
-    <script type="module" src="./workbench/app.mjs"></script>
+    <link rel="stylesheet" href="./workbench/styles.css?v=20261105-strategy2" />
+    <link rel="stylesheet" href="./workbench/strategy.css?v=20261105-strategy2" />
+    <script type="module" src="./workbench/app.mjs?v=20261105-strategy2"></script>
   </head>
   <body>
     <a href="#main" class="skip-link">跳到工作区</a>
@@ -28,7 +29,10 @@
             <span data-icon="home"></span>总览
           </button>
           <button data-view="learning">
-            <span data-icon="layers"></span>学习与计划
+            <span data-icon="layers"></span>目标与项目
+          </button>
+          <button data-view="archives">
+            <span data-icon="document"></span>积累与归档
           </button>
           <button data-view="tasks">
             <span data-icon="check"></span>待办事项
@@ -101,6 +105,61 @@
           <span data-icon="filter"></span><span id="filter-label"></span
           ><button id="clear-filters">清除筛选 ×</button>
         </div>
+        <section
+          class="panel strategy-landscape"
+          id="strategy-landscape"
+          aria-labelledby="goals-heading"
+        >
+          <div class="section-heading">
+            <div>
+              <div class="overline">THE LONG VIEW</div>
+              <h2 id="goals-heading">长期目标全景</h2>
+            </div>
+            <div class="heading-actions">
+              <span class="mini-label" id="goal-summary"></span
+              ><button class="button small" id="new-goal">＋ 新目标</button>
+            </div>
+          </div>
+          <div id="goal-list" class="goal-grid"></div>
+          <div id="goal-context" class="goal-context" hidden></div>
+        </section>
+        <section
+          class="continuation-strip"
+          id="continuation-strip"
+          aria-label="待续学习"
+        ></section>
+        <section
+          id="archive-workspace"
+          class="panel archive-workspace"
+          hidden
+          aria-labelledby="archive-heading"
+        >
+          <div class="section-heading">
+            <div>
+              <div class="overline">A RECORD OF GROWTH</div>
+              <h2 id="archive-heading">积累与归档</h2>
+            </div>
+            <button class="button small" id="new-archive">＋ 学习记录</button>
+          </div>
+          <p class="section-description">
+            保留问答、关键结论与完成历史，下一次从这里继续。
+          </p>
+          <div class="archive-toolbar">
+            <select
+              class="compact-select"
+              id="archive-filter"
+              aria-label="归档类型"
+            >
+              <option value="all">全部学习记录</option>
+              <option value="pending">待继续</option>
+              <option value="recorded">已归档</option>
+              <option value="history">完成历史</option></select
+            ><button class="button small" id="archive-update-button">
+              导入新归档
+            </button>
+          </div>
+          <div id="archive-list"></div>
+        </section>
         <div class="overview-grid" id="overview-grid">
           <section
             class="panel learning-workspace"
@@ -109,7 +168,7 @@
           >
             <div class="section-heading">
               <h2 id="learning-heading">
-                <span data-icon="layers"></span>学习与计划
+                <span data-icon="layers"></span>当前跟踪事项
               </h2>
               <div class="heading-actions">
                 <span class="mini-label" id="project-summary"></span
@@ -139,6 +198,7 @@
               </div>
             </div>
             <div class="plan-columns" id="plan-columns"></div>
+            <div id="proposal-workspace"></div>
           </section>
           <div class="right-column" id="right-column">
             <section
@@ -255,7 +315,8 @@
         <footer class="page-footer">
           <span
             ><span class="live-dot"></span>只在当前浏览器保存
-            <span class="footer-divider">/</span> AI 会话与 ima 尚未接入</span
+            <span class="footer-divider">/</span> ChatGPT 中继续 ·
+            工作台里沉淀</span
           ><button class="subtle-link" id="footer-export">
             导出我的工作区 <span data-icon="download"></span>
           </button>
@@ -417,8 +478,21 @@
       </p>
       <div class="settings-row">
         <div>
+          <h3>合并聊天归档</h3>
+          <p>预览新增和更新，保留已有记录与手工进度。</p>
+        </div>
+        <button class="button" id="update-button">导入归档</button>
+      </div>
+      <input
+        type="file"
+        id="update-file"
+        accept="application/json,.json"
+        hidden
+      />
+      <div class="settings-row">
+        <div>
           <h3>导出工作区</h3>
-          <p>备份学习、计划、待办、笔记、网站和实验。</p>
+          <p>备份目标、关联、学习归档和全部工作区内容。</p>
         </div>
         <button class="button" id="export-button">
           <span data-icon="download"></span>导出 JSON

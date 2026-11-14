@@ -7,8 +7,14 @@ export const PARENT_TYPES = {
 /** @param {string} collection @param {any} record @returns {{collection:string,id:string}|null} */
 export function parentOf(collection, record) {
   if (collection === "goals") return null;
+  if (collection === "tasks")
+    return record.projectId
+      ? { collection: "projects", id: record.projectId }
+      : record.goalIds?.length
+        ? { collection: "goals", id: record.goalIds[0] }
+        : null;
   if (record.parentRef) return record.parentRef;
-  if (collection === "archives" && record.projectId)
+  if (["archives", "tasks"].includes(collection) && record.projectId)
     return { collection: "projects", id: record.projectId };
   if (collection !== "projects" && record.itemIds?.length)
     return { collection: "projects", id: record.itemIds[0] };
@@ -25,7 +31,7 @@ export function createGoalResolver(state) {
   const index = new Map(),
     cache = new Map(),
     collections = new Map();
-  for (const c of ["goals", "projects", "plans", "archives"])
+  for (const c of ["goals", "projects", "plans", "archives", "tasks"])
     for (const r of state[c]) {
       index.set(c + ":" + r.id, { c, r });
       collections.set(r, c);
@@ -70,7 +76,7 @@ export function createGoalResolver(state) {
 export function buildHierarchy(state, predicate = () => true) {
   /** @type {Map<string,TreeNode>} */ const nodes = new Map();
   const parents = new Map();
-  for (const collection of ["goals", "projects", "plans", "archives"])
+  for (const collection of ["goals", "projects", "plans", "archives", "tasks"])
     for (const record of state[collection]) {
       const key = collection + ":" + record.id;
       nodes.set(key, {
@@ -123,7 +129,7 @@ export function buildHierarchy(state, predicate = () => true) {
     if (node.collection !== "group" && predicate(node.record, node.collection))
       retainPath(node.key);
   const resolveGoal = createGoalResolver(state);
-  for (const collection of ["projects", "plans", "archives"])
+  for (const collection of ["projects", "plans", "archives", "tasks"])
     for (const record of state[collection]) {
       if (!record.goalIds?.length) continue;
       const key = collection + ":" + record.id;

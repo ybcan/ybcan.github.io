@@ -1,6 +1,7 @@
 import * as legacy from "#workbench/workspace-v1";
 
 import { PARENT_TYPES, parentOf } from "#workbench/hierarchy";
+import { normalizeWorkModel, upgradeWorkModel } from "#workbench/work-model";
 
 export const COLLECTIONS = [
   "tasks",
@@ -30,6 +31,12 @@ const PROTECTED = new Set([
   "nextStep",
   "parentRef",
   "parentCustomized",
+  "projectId",
+  "scheduledFor",
+  "priority",
+  "migrationKey",
+  "sourceStepId",
+  "materialType",
 ]);
 import { MAX_BACKUP_BYTES } from "#workbench/limits";
 const LIMIT = MAX_BACKUP_BYTES;
@@ -185,6 +192,43 @@ function normalizeRecord(collection, input, defaultOrigin = "user") {
     );
     r.confirmed = bool(input.confirmed, origin === "user");
   }
+  if (collection === "tasks") {
+    r.projectId = text(input.projectId ?? r.itemIds[0], "所属项目", 100);
+    r.adoption = enumeration(
+      input.adoption,
+      ["candidate", "adopted", "deferred", "rejected"],
+      origin === "ai" ? "candidate" : "adopted",
+      "采纳状态",
+    );
+    r.execution = enumeration(
+      input.execution,
+      ["unknown", "not_started", "active", "paused", "completed"],
+      "not_started",
+      "任务状态",
+    );
+    r.execution = r.done
+      ? "completed"
+      : r.execution === "completed"
+        ? "not_started"
+        : r.execution;
+    r.scheduledFor = text(input.scheduledFor, "安排日期", 10);
+    if (
+      r.scheduledFor &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(r.scheduledFor) ||
+        new Date(r.scheduledFor).toISOString().slice(0, 10) !== r.scheduledFor)
+    )
+      throw Error("安排日期不正确");
+    r.priority = enumeration(
+      input.priority,
+      ["low", "normal", "high"],
+      "normal",
+      "优先级",
+    );
+    r.body = text(input.body, "任务说明");
+    r.acceptance = text(input.acceptance, "验收要求");
+    r.migrationKey = text(input.migrationKey, "迁移来源", 500);
+    r.sourceStepId = text(input.sourceStepId, "原始步骤", 100);
+  }
   if (collection === "projects" || collection === "plans") {
     r.adoption = enumeration(
       input.adoption,
@@ -227,6 +271,26 @@ function normalizeRecord(collection, input, defaultOrigin = "user") {
         confirmed: bool(link.confirmed),
       };
     });
+  }
+  if (collection === "plans") {
+    r.needsReview = bool(
+      input.needsReview,
+      input.materialType === undefined &&
+        input.kind === undefined &&
+        origin !== "ai",
+    );
+    r.materialType = enumeration(
+      input.materialType ??
+        (input.kind === "task"
+          ? "action"
+          : input.kind === "milestone"
+            ? "milestone"
+            : undefined),
+      ["proposal", "reference", "milestone", "action"],
+      origin === "ai" ? "proposal" : "reference",
+      "资料类型",
+    );
+    r.migratedTaskId = text(input.migratedTaskId, "关联任务", 100);
   }
   if (collection === "sources") {
     r.shareUrl = url(input.shareUrl, "分享链接");
@@ -294,6 +358,8 @@ function references(state) {
         if (r.sourceId && !sources.has(r.sourceId))
           throw Error("归档来源不存在：" + r.sourceId);
       }
+      if (collection === "tasks" && r.projectId && !items.has(r.projectId))
+        throw Error("任务所属项目不存在：" + r.projectId);
       if (collection === "projects")
         for (const link of r.relations) {
           if (!items.has(link.targetId))
@@ -339,6 +405,7 @@ function references(state) {
 export function normalizeState(input) {
   requireObject(input, "工作区");
   const state = {};
+  state.workModel = normalizeWorkModel(input.workModel);
   for (const key of COLLECTIONS) {
     const array = input[key] ?? (BASE.includes(key) ? null : []);
     if (!Array.isArray(array) || array.length > 10000)
@@ -391,6 +458,8 @@ export function normalizeState(input) {
       fields: structuredClone(rev.fields),
     };
   });
+  upgradeWorkModel(state, normalizeRecord);
+  unique(state.tasks, "tasks");
   references(state);
   return /** @type {import("./types.js").Workspace} */ (state);
 }
@@ -775,7 +844,8 @@ export function removeRecord(state, collection, id) {
           record.itemIds = record.itemIds.filter((v) => v !== id);
         if (record.relations)
           record.relations = record.relations.filter((r) => r.targetId !== id);
-        if (c === "archives" && record.projectId === id) record.projectId = "";
+        if (["archives", "tasks"].includes(c) && record.projectId === id)
+          record.projectId = "";
       }
       if (
         record.parentRef?.collection === collection &&
@@ -849,6 +919,7 @@ export function clearExamples(input) {
             add("projects", r.projectId);
             add("sources", r.sourceId);
           }
+          if (key === "tasks") add("projects", r.projectId);
         }
   }
   for (const key of COLLECTIONS)

@@ -53,7 +53,7 @@ class ReliabilityTests(strategy_browser.StrategyTests):
 
     def test_about_has_release_and_license_information(self):
         self.page.locator('#about-button').click()
-        expect(self.page.locator('#about-dialog')).to_contain_text('0.4.1')
+        expect(self.page.locator('#about-dialog')).to_contain_text('0.5.0')
         expect(self.page.locator('#about-dialog')).to_contain_text('ybcan')
         expect(self.page.get_by_role('link',name='MIT 许可证')).to_be_visible()
 
@@ -128,9 +128,9 @@ class ReliabilityTests(strategy_browser.StrategyTests):
         self.assertIn('其他标签页修复后的记录',raw)
 
     def test_stale_delete_does_not_remove_a_record_edited_in_another_tab(self):
-        self.page.get_by_role('button',name='编辑待办：读完一篇前沿文章',exact=True).click()
+        self.page.locator('#tasks-list').get_by_role('button',name='编辑任务：读完一篇前沿文章',exact=True).click()
         other=self.context.new_page();other.goto(self.url);other.locator('html[data-ready="true"]').wait_for()
-        other.get_by_role('button',name='编辑待办：读完一篇前沿文章',exact=True).click()
+        other.locator('#tasks-list').get_by_role('button',name='编辑任务：读完一篇前沿文章',exact=True).click()
         other.locator('#record-title').fill('其他标签页修改后的待办');other.locator('#record-submit').click()
         expect(other.locator('#record-dialog')).not_to_be_visible()
         self.page.locator('#record-delete').click();self.page.locator('#confirm-accept').click()
@@ -163,11 +163,9 @@ class ReliabilityTests(strategy_browser.StrategyTests):
         expect(self.page.locator('#focus-toggle')).to_have_attribute('aria-label','开始专注')
         expect(self.page.locator('#focus-time')).to_have_text('25:00')
 
-    def test_stale_plan_advance_reports_conflict(self):
-        title='梳理一个投资研究问题'
+    def test_stale_task_completion_reports_conflict(self):
+        title='读完一篇前沿文章'
         other=self.context.new_page();other.goto(self.url);other.locator('html[data-ready="true"]').wait_for()
-        other.get_by_role('button',name='推进计划：'+title,exact=True).click()
-        expect(other.locator('[data-status="active"] .plan-card').filter(has_text=title)).to_be_visible()
-        self.page.get_by_role('button',name='推进计划：'+title,exact=True).click()
-        expect(self.page.locator('#toast')).to_contain_text('变化')
-        other.close()
+        other.locator('#tasks-list').get_by_role('button',name='编辑任务：'+title,exact=True).click();other.locator('#record-adoption').select_option('candidate');other.locator('#record-submit').click();expect(other.locator('#record-dialog')).not_to_be_visible()
+        self.page.locator('#tasks-list').get_by_role('checkbox',name='完成任务：'+title,exact=True).check()
+        expect(self.page.locator('#toast')).to_contain_text('变化');other.close()

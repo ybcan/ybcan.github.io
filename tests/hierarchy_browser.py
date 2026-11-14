@@ -20,11 +20,10 @@ class HierarchyTests(reliability_browser.ReliabilityTests):
         row=self.page.locator('.hierarchy-record[data-key="projects:project-x"]')
         row.locator('.hierarchy-title').click()
         expect(self.page.locator('.hierarchy-record[data-key="projects:child-x"]')).to_be_visible()
+        self.page.locator('#strategy-tree .hierarchy-title').filter(has_text='方案与知识资料').first.click()
         plan=self.page.locator('.hierarchy-record[data-key="plans:plan-x"]')
-        expect(plan).to_contain_text('建议待确认')
-        plan.get_by_role('button',name='采纳',exact=True).click()
-        expect(self.page.locator('.hierarchy-record[data-key="plans:plan-x"]')).to_contain_text('已采纳')
-        expect(self.page.locator('.hierarchy-record[data-key="plans:plan-x"]')).to_contain_text('进度待确认')
+        expect(plan).to_contain_text('建议待确认');expect(plan).to_contain_text('方案资料')
+        expect(plan.get_by_role('button',name='采纳',exact=True)).to_have_count(0)
 
     def test_tree_search_keeps_the_goal_and_project_path_to_a_learning_record(self):
         self.import_packet(self.tree_packet());self.page.locator('[data-view="learning"]').click()

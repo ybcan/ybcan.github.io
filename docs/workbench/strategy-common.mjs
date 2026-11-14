@@ -16,8 +16,8 @@ export const kindNames = {
   project: "实践项目",
   learning: "持续学习",
   research: "专题研究",
-  method: "共通方法",
-  idea: "探索想法",
+  method: "方法资料",
+  idea: "零散想法",
 };
 export const archiveNames = {
   waiting_answer: "待回答",
@@ -34,7 +34,7 @@ export const labels = {
   adoption: "采纳状态",
   directionIds: "关联方向",
   goalIds: "关联目标",
-  itemIds: "关联事项",
+  itemIds: "关联项目",
   answer: "用户回答",
   question: "题目",
   feedback: "AI 点评",
@@ -43,7 +43,7 @@ export const labels = {
   capturedAt: "归档时间",
   steps: "步骤",
   status: "记录状态",
-  relations: "事项关系",
+  relations: "项目关系",
   origin: "内容来源",
   practiceRule: "跟进规则",
   acceptance: "验收要求",
@@ -121,7 +121,8 @@ export function createStrategyUI(ctx) {
   }
   function field(root, label, id, value = "", type = "input", options = null) {
     const wrap = el("label", "field", label),
-      input = el(type);
+      input = el(type === "date" ? "input" : type);
+    if (type === "date") input.type = "date";
     input.id = id;
     if (type === "textarea") {
       input.rows = 4;

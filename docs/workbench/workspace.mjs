@@ -23,7 +23,7 @@ export function serializeBackup(state) {
   const raw = JSON.stringify(
     {
       format: "personal-cockpit",
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       data: normalizeState(state),
     },
@@ -43,7 +43,7 @@ export function parseBackup(raw) {
   } catch {
     throw Error("备份不是有效的 JSON 文件");
   }
-  if (value?.format !== "personal-cockpit" || ![1, 2].includes(value.version))
+  if (value?.format !== "personal-cockpit" || ![1, 2, 3].includes(value.version))
     throw Error("这不是受支持的个人驾驶舱备份");
   return value.version === 1
     ? migrateLegacy(value.data)

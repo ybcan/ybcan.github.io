@@ -29,9 +29,9 @@ class EditingTests(hierarchy_browser.HierarchyTests):
         self.page.locator('.archive-card').filter(has_text='合成学习断点').get_by_role('button',name='编辑',exact=True).click();expect(self.page.locator('#strategy-answer')).to_have_value('保存后的学习回答')
         self.page.locator('#strategy-delete').click();self.page.locator('#confirm-accept').click();expect(self.page.locator('#strategy-dialog')).not_to_be_visible()
         self.assertFalse(any(a['id']=='round-x' for a in self.stored()['archives']));self.assertTrue(any(p['id']=='project-x' for p in self.stored()['projects']))
-        self.page.locator('[data-view="tasks"]').click();self.page.get_by_role('button',name='编辑待办：读完一篇前沿文章',exact=True).click()
+        self.page.locator('[data-view="tasks"]').click();self.page.locator('#tasks-list').get_by_role('button',name='编辑任务：读完一篇前沿文章',exact=True).click()
         self.page.locator('#record-title').fill('修改后的待办');self.page.locator('#record-submit').click();expect(self.page.locator('#record-dialog')).not_to_be_visible()
-        self.page.get_by_role('button',name='编辑待办：修改后的待办',exact=True).click();self.page.locator('#record-delete').click();self.page.locator('#confirm-accept').click();expect(self.page.locator('#record-dialog')).not_to_be_visible()
+        self.page.locator('#tasks-list').get_by_role('button',name='编辑任务：修改后的待办',exact=True).click();self.page.locator('#record-delete').click();self.page.locator('#confirm-accept').click();expect(self.page.locator('#record-dialog')).not_to_be_visible()
         self.assertFalse(any(t['title']=='修改后的待办' for t in self.stored()['tasks']))
 
     def test_delete_linked_project_preserves_stage_and_archive(self):
@@ -59,6 +59,6 @@ class EditingTests(hierarchy_browser.HierarchyTests):
         expect(self.page.locator('#strategy-dialog')).to_be_visible();expect(self.page.locator('#strategy-dialog .form-error')).to_contain_text('记录已保留');self.page.get_by_role('button',name='关闭详情窗口',exact=True).click()
         self.page.locator('[data-view="archives"]').click();self.page.locator('.archive-card').filter(has_text='合成学习断点').get_by_role('button',name='编辑',exact=True).click();self.page.locator('#strategy-delete').click();self.page.locator('#confirm-accept').click()
         expect(self.page.locator('#strategy-dialog')).to_be_visible();expect(self.page.locator('#strategy-dialog .form-error')).to_contain_text('记录已保留');self.page.get_by_role('button',name='关闭详情窗口',exact=True).click()
-        self.page.locator('[data-view="tasks"]').click();self.page.get_by_role('button',name='编辑待办：读完一篇前沿文章',exact=True).click();self.page.locator('#record-delete').click();self.page.locator('#confirm-accept').click()
+        self.page.locator('[data-view="tasks"]').click();self.page.locator('#tasks-list').get_by_role('button',name='编辑任务：读完一篇前沿文章',exact=True).click();self.page.locator('#record-delete').click();self.page.locator('#confirm-accept').click()
         expect(self.page.locator('#record-dialog')).to_be_visible();expect(self.page.locator('#record-error')).to_contain_text('记录已保留');expect(self.page.locator('#toast')).not_to_have_text('记录已删除')
         self.page.reload();self.page.locator('html[data-ready="true"]').wait_for();saved=self.stored();self.assertTrue(any(g['id']=='goal-x'for g in saved['goals']));self.assertTrue(any(a['id']=='round-x'for a in saved['archives']));self.assertTrue(any(t['title']=='读完一篇前沿文章'for t in saved['tasks']))

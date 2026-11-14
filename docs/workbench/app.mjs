@@ -1,3 +1,4 @@
+import { isProject } from "#workbench/work-model";
 import {
   DIRECTIONS,
   STORAGE_KEY,
@@ -80,9 +81,9 @@ function openTool(kind) {
   return tools.open(kind);
 }
 const names = {
-  tasks: "待办",
-  projects: "学习",
-  plans: "计划",
+  tasks: "任务",
+  projects: "项目",
+  plans: "方案资料",
   notes: "笔记",
   sites: "网站",
   experiments: "实验",
@@ -105,9 +106,9 @@ const viewInfo = {
     "从长期目标找到学习、实践与研究，明确当前下一步。",
   ],
   tasks: [
-    "待办事项",
+    "任务与计划",
     "从一件重要的事开始。",
-    "少一点悬而未决，多一点实际行动。",
+    "待办是未完成任务；计划安排同一批任务的时间。",
   ],
   lab: [
     "实验空间",
@@ -212,6 +213,19 @@ async function performCommit(change, options) {
     storageStatus = "saved";
   } catch (error) {
     if (invalid || options.requirePersistence) {
+      if (invalid && !volatileChanges && baseline !== savedSnapshot) {
+        try {
+          const latest = await store.read();
+          const refreshed =
+            latest === null ? createWorkspace(false) : parseBackup(latest);
+          state = refreshed;
+          savedSnapshot = latest;
+          storageStatus = "saved";
+          render();
+        } catch {
+          /* Keep editor input and the last usable state when the latest snapshot cannot be read. */
+        }
+      }
       toast(error.message || "归档未保存，当前内容未替换。");
       return false;
     }
@@ -661,7 +675,13 @@ recordEditor = initRecordEditor({
       direction = "";
     query = "";
     $("global-search").value = "";
-    if (["experiments", "notes"].includes(kind)) setView("lab");
+    if (kind === "tasks")
+      $("task-filter").value =
+        item.adoption === "adopted" ? "pending" : "candidate";
+    if (kind === "plans" || (kind === "projects" && !isProject(item))) {
+      $("archive-filter").value = "materials";
+      setView("archives");
+    } else if (["experiments", "notes"].includes(kind)) setView("lab");
     else if (view !== "overview")
       setView(
         {
@@ -676,6 +696,7 @@ recordEditor = initRecordEditor({
   },
 });
 workspaceViews = initWorkspaceViews({
+  render,
   el,
   icon,
   commit,

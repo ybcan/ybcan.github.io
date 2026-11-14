@@ -22,8 +22,8 @@ class StrategyTests(browser_smoke.CockpitTests):
     def test_strategy_goals_associations_and_adoption(self):
         self.import_packet(self.packet())
         goal=self.page.locator('.goal-card').filter(has_text='合成长期目标')
-        expect(goal).to_contain_text('1 个事项')
-        goal.get_by_role('button',name='查看关联事项').click()
+        expect(goal).to_contain_text('1 个项目')
+        goal.get_by_role('button',name='查看关联项目').click()
         self.page.locator('#learning-mode-list').click()
         expect(self.page.locator('#projects-list')).to_contain_text('合成实践项目')
         expect(self.page.locator('#projects-list .project')).to_have_count(1)
@@ -33,7 +33,7 @@ class StrategyTests(browser_smoke.CockpitTests):
         stored=self.page.evaluate('async () => { const s = await (await import("./workbench/storage.mjs")).openWorkspaceStore(); return JSON.parse(await s.read()).data; }')
         plan=next(x for x in stored['plans'] if x['id']=='plan-x')
         self.assertEqual(plan['adoption'],'adopted'); self.assertEqual(plan['execution'],'unknown')
-        self.assertIn('AI候选规划',self.page.locator('#plan-columns').inner_text())
+        self.assertNotIn('AI候选规划',self.page.locator('#plan-columns').inner_text())
         self.page.reload()
         expect(self.page.locator('.goal-card').filter(has_text='合成长期目标')).to_be_visible()
 

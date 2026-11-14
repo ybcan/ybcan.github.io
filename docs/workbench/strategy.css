@@ -795,3 +795,43 @@ input[type="checkbox"] {
     margin-left: 10px;
   }
 }
+/* One task record appears in project, todo and scheduling views. */
+.project-steps {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+.project-steps .task-row {
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.plan-cards .task-row {
+  background: #1a2533;
+  padding: 10px;
+  border-radius: 8px;
+}
+.task-mode {
+  margin-bottom: 12px;
+}
+.priority-high {
+  color: #ffcd88;
+}
+#task-schedule {
+  grid-template-columns: 1fr;
+}
+.material-card .strategy-actions {
+  flex-wrap: wrap;
+}
+.hierarchy-depth {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #92a0b5;
+}
+.task-row .task-edit {
+  position: static;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+}

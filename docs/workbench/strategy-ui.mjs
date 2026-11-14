@@ -1,3 +1,5 @@
+import { isProject, tasksForProject } from "#workbench/work-model";
+import { stable } from "#workbench/strategy";
 import { DIRECTIONS } from "#workbench/workspace";
 import {
   createStrategyUI,
@@ -70,7 +72,7 @@ export function initStrategy(ctx) {
     }
     for (const g of goals) {
       const items = state().projects.filter(
-        (p) => p.goalIds.includes(g.id) && !p.archived,
+        (p) => isProject(p) && p.goalIds.includes(g.id) && !p.archived,
       );
       const card = el(
         "article",
@@ -90,7 +92,7 @@ export function initStrategy(ctx) {
         el(
           "span",
           null,
-          `${items.length} 个事项 · ${items.filter((p) => p.execution === "active").length} 个进行中`,
+          `${items.length} 个项目 · ${items.filter((p) => p.execution === "active").length} 个进行中`,
         ),
         badge(
           g.demo
@@ -107,7 +109,7 @@ export function initStrategy(ctx) {
         title,
         el("p", "goal-why", g.why || "还没有填写为什么重要。"),
         meta,
-        button("查看关联事项", () => selectGoal(g.id), "goal-open"),
+        button("查看关联项目", () => selectGoal(g.id), "goal-open"),
       );
       root.append(card);
     }
@@ -179,14 +181,14 @@ export function initStrategy(ctx) {
   function showProposals() {
     const root = $("proposal-workspace");
     root.replaceChildren();
-    const entries = ["projects", "plans"].flatMap((collection) =>
+    const entries = ["projects", "plans", "tasks"].flatMap((collection) =>
       state()
         [collection].filter((r) => r.adoption !== "adopted" && ctx.matches(r))
         .map((r) => ({ collection, r })),
     );
     const heading = el("div", "section-heading proposal-heading");
     heading.append(
-      el("h2", null, "想法与候选规划"),
+      el("h2", null, "候选项目、任务与资料"),
       badge(`${entries.length} 项`),
     );
     root.append(heading);
@@ -271,42 +273,32 @@ export function initStrategy(ctx) {
       $("archive-next").disabled = page >= pages - 1;
       return items.slice(page * 20, (page + 1) * 20);
     }
-    if (mode === "history") {
+    if (mode === "materials") {
+      showMaterials(root, paginate);
+    } else if (mode === "history") {
       const completed = ["tasks", "projects", "plans"].flatMap((collection) =>
         state()
           [collection].filter(
             (r) =>
               ctx.matches(r) &&
+              r.adoption === "adopted" &&
+              !r.migratedTaskId &&
               (r.done === true || r.execution === "completed"),
           )
           .map((r) => ({ collection, r })),
       );
-      const steps = state()
-        .projects.filter(ctx.matches)
-        .flatMap((p) => p.steps.filter((s) => s.done).map((s) => ({ p, s })));
-      for (const entry of paginate([...completed, ...steps])) {
+      for (const { collection, r } of paginate(completed)) {
         const row = el("article", "history-row");
-        if (entry.r) {
-          const { collection, r } = entry;
-          row.append(
-            icon("check"),
-            el("h3", null, r.title),
-            badge("已完成"),
-            button("查看", () =>
-              collection === "tasks"
-                ? openRecord(collection, r.id)
-                : detail(collection, r.id),
-            ),
-          );
-        } else {
-          const { p, s } = entry;
-          row.append(
-            icon("check"),
-            el("div", null, p.title + " / " + s.title),
-            badge("步骤完成"),
-            button("查看事项", () => detail("projects", p.id)),
-          );
-        }
+        row.append(
+          icon("check"),
+          el("h3", null, r.title),
+          badge("已完成"),
+          button("查看", () =>
+            collection === "tasks"
+              ? openRecord(collection, r.id)
+              : detail(collection, r.id),
+          ),
+        );
         root.append(row);
       }
     } else {
@@ -323,7 +315,7 @@ export function initStrategy(ctx) {
         const top = el("div", "archive-card-top");
         top.append(
           badge(archiveNames[r.status], "state-" + r.status),
-          el("small", null, titleOf("projects", r.projectId) || "未关联事项"),
+          el("small", null, titleOf("projects", r.projectId) || "未关联项目"),
         );
         card.append(
           top,
@@ -363,6 +355,73 @@ export function initStrategy(ctx) {
         ),
       );
   }
+  async function convertMaterial(expected) {
+    const id = expected.id;
+    if (
+      await commit((s) => {
+        const p = s.plans.find((p) => p.id === id);
+        if (!p) throw Error("资料已删除。");
+        if (stable(p) !== stable(expected))
+          throw Error("资料已有变化，请确认最新内容后再转为任务。");
+        p.materialType = "action";
+        p.needsReview = false;
+      })
+    ) {
+      const p = state().plans.find((p) => p.id === id);
+      if (
+        p?.migratedTaskId &&
+        state().tasks.some((t) => t.id === p.migratedTaskId)
+      )
+        openRecord("tasks", p.migratedTaskId);
+    }
+  }
+  function showMaterials(root, paginate) {
+    const records = [
+      ...state().plans.map((r) => ({ collection: "plans", r })),
+      ...state()
+        .projects.filter((r) => !isProject(r))
+        .map((r) => ({ collection: "projects", r })),
+    ].filter(({ r }) => ctx.matches(r));
+    for (const { collection, r } of paginate(records)) {
+      const card = el("article", "archive-card material-card");
+      card.dataset.materialId = r.id;
+      card.append(
+        el("h3", null, r.title),
+        badge(
+          collection === "projects"
+            ? "方法与想法"
+            : {
+                proposal: "路线建议",
+                reference: "参考资料",
+                milestone: "阶段里程碑",
+                action: "已转为任务",
+              }[r.materialType],
+        ),
+        badge(adoptionNames[r.adoption]),
+        el(
+          "p",
+          null,
+          r.summary || r.nextStep || "保留原始资料，可关联项目后再展开。",
+        ),
+      );
+      const actions = el("div", "strategy-actions");
+      actions.append(
+        button("详情", () => detail(collection, r.id)),
+        button("编辑", () => openRecord(collection, r.id)),
+      );
+      if (collection === "plans") {
+        if (r.migratedTaskId) {
+          const t = state().tasks.find((t) => t.id === r.migratedTaskId);
+          if (t)
+            actions.append(button("查看任务", () => openRecord("tasks", t.id)));
+          else actions.append(el("small", null, "原任务已删除，资料仍保留。"));
+        } else actions.append(button("转为任务", () => convertMaterial(r)));
+      }
+      if (r.needsReview) card.append(badge("类型待确认"));
+      card.append(actions);
+      root.append(card);
+    }
+  }
   function decorateProject(card, p) {
     const content = card.querySelector(".project-content"),
       meta = el("div", "strategy-tags project-tags");
@@ -375,9 +434,10 @@ export function initStrategy(ctx) {
         button(titleOf("goals", id), () => selectGoal(id), "goal-chip"),
       );
     content.prepend(meta);
-    if (!p.steps.length) card.querySelector(".project-count").hidden = true;
+
     const next = card.querySelector(".project-next");
-    if (p.nextStep) next.textContent = "下一步：" + p.nextStep;
+    if (p.nextStep)
+      content.append(el("p", "item-summary", "推进备注：" + p.nextStep));
     if (p.summary) content.append(el("p", "item-summary", p.summary));
     const detailButton = button(
       "详情与记录 →",

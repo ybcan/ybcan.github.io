@@ -65,6 +65,20 @@ export interface Item extends LinkedRecord {
     confirmed: boolean;
   }[];
 }
+export interface Task extends LinkedRecord {
+  title: string;
+  done: boolean;
+  projectId: string;
+  adoption: Adoption;
+  execution: Execution;
+  scheduledFor: string;
+  dueDate?: string;
+  priority: "low" | "normal" | "high";
+  body: string;
+  acceptance: string;
+  migrationKey: string;
+  sourceStepId: string;
+}
 export interface Archive extends LinkedRecord {
   title: string;
   projectId: string;
@@ -83,12 +97,13 @@ export interface Archive extends LinkedRecord {
   capturedAt: string | null;
 }
 export interface Workspace {
+  workModel: { version: 1; links: Record<string, string> };
   goals: Goal[];
   projects: Item[];
   archives: Archive[];
   plans: any[];
   sources: any[];
-  tasks: any[];
+  tasks: Task[];
   notes: any[];
   sites: any[];
   experiments: any[];

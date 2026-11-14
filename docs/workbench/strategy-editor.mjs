@@ -1,6 +1,7 @@
 import { DIRECTIONS, safeUrl } from "#workbench/workspace";
 import { stable, removeRecord } from "#workbench/strategy";
 import { parentOf, PARENT_TYPES } from "#workbench/hierarchy";
+import { tasksForProject, isProject } from "#workbench/work-model";
 import {
   executionNames,
   adoptionNames,
@@ -65,6 +66,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     }
   }
   function detail(collection, id) {
+    if (collection === "tasks") return openRecord("tasks", id);
     const r = state()[collection].find((r) => r.id === id);
     if (!r) return;
     editor = null;
@@ -127,10 +129,10 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         );
       root.append(button("编辑归档", () => edit(collection, id)));
     } else {
-      root.append(
-        badge(adoptionNames[r.adoption]),
-        badge(executionNames[r.execution]),
-      );
+      root.append(badge(adoptionNames[r.adoption]));
+      if (collection === "projects" && isProject(r))
+        root.append(badge(executionNames[r.execution]));
+      else root.append(badge("方案与知识资料"));
       for (const [key, label] of [
         ["summary", "概述"],
         ["nextStep", "下一步"],
@@ -153,7 +155,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         root.append(
           button(
             {
-              related: "相关事项",
+              related: "相关项目",
               method: "采用方法",
               research: "相关研究",
               depends: rel.confirmed ? "已确认前置依赖" : "候选前置依赖",
@@ -168,7 +170,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
       for (const p of plans)
         root.append(
           button(
-            "计划：" + p.title + " · " + adoptionNames[p.adoption],
+            "方案资料：" + p.title + " · " + adoptionNames[p.adoption],
             () => detail("plans", p.id),
             "relation-link",
           ),
@@ -184,11 +186,15 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         );
       const notes = state().notes.filter((n) => n.itemIds.includes(id));
       for (const note of notes) description(root, "关联随手记", note.body);
-      const tasks = state().tasks.filter((t) => t.itemIds.includes(id));
+      const tasks =
+        collection === "projects" ? tasksForProject(state(), id) : [];
       for (const task of tasks)
         root.append(
           button(
-            (task.done ? "已完成：" : "待办：") + task.title,
+            (task.done ? "已完成：" : "任务：") +
+              task.title +
+              " · " +
+              adoptionNames[task.adoption],
             () => {
               close();
               openRecord("tasks", task.id);
@@ -197,11 +203,24 @@ export function initStrategyEditor(ctx, common, selectGoal) {
           ),
         );
       root.append(
-        button("编辑事项", () => {
+        button("编辑项目", () => {
           close();
           openRecord(collection, id);
         }),
       );
+      if (collection === "projects" && isProject(r))
+        root.append(
+          button("新增任务", () => {
+            close();
+            openRecord("tasks", null, {
+              projectId: r.id,
+              itemIds: [r.id],
+              goalIds: [...r.goalIds],
+              directionIds: [...r.directionIds],
+              direction: r.direction,
+            });
+          }),
+        );
     }
     sourceEvidence(root, r);
     const revs = state().revisions.filter(
@@ -264,13 +283,13 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     const value = record?.parentRef
       ? record.parentRef.collection + ":" + record.parentRef.id
       : "";
-    const options = [["", "自动归属（按已有目标或事项关联）"]];
+    const options = [["", "自动归属（按已有目标或项目关联）"]];
     for (const c of PARENT_TYPES[collection])
       for (const r of state()[c])
         if (!(c === collection && r.id === record?.id))
           options.push([
             c + ":" + r.id,
-            { goals: "目标", projects: "事项", plans: "计划" }[c] +
+            { goals: "目标", projects: "项目", plans: "方案资料" }[c] +
               " · " +
               r.title,
           ]);
@@ -352,7 +371,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     } else {
       field(
         form,
-        "关联事项",
+        "关联项目",
         "strategy-project",
         existing?.projectId || "",
         "select",
@@ -408,7 +427,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
           if (
             !(await ctx.confirm(
               "删除这条记录？",
-              "仅删除所选记录，保留其下的计划和学习记录并解除关联。删除后可从备份恢复。",
+              "仅删除所选记录，保留关联的任务、资料和学习记录并解除关联。删除后可从备份恢复。",
               "删除",
             ))
           )
@@ -578,20 +597,82 @@ export function initStrategyEditor(ctx, common, selectGoal) {
       state().goals.map((g) => [g.id, g.title]),
       r?.goalIds,
     );
-    if (kind !== "projects")
+    if (!["projects", "tasks"].includes(kind))
       checkboxGroup(
         extra,
-        "关联事项（可多选）",
+        "关联项目（可多选）",
         "record-items",
         state().projects.map((p) => [p.id, p.title]),
         r?.itemIds,
       );
+    if (kind === "tasks") {
+      field(extra, "所属项目", "record-project", r?.projectId || "", "select", [
+        ["", "暂未归属"],
+        ...state()
+          .projects.filter((p) => isProject(p) || p.id === r?.projectId)
+          .map((p) => [p.id, p.title]),
+      ]);
+      field(
+        extra,
+        "安排日期",
+        "record-scheduled",
+        r?.scheduledFor || "",
+        "date",
+      );
+      field(
+        extra,
+        "优先级",
+        "record-priority",
+        r?.priority || "normal",
+        "select",
+        [
+          ["high", "高"],
+          ["normal", "普通"],
+          ["low", "低"],
+        ],
+      );
+      field(
+        extra,
+        "采纳状态",
+        "record-adoption",
+        r?.adoption || "adopted",
+        "select",
+        Object.entries(adoptionNames),
+      );
+      field(extra, "任务说明", "record-task-body", r?.body || "", "textarea");
+      field(
+        extra,
+        "验收要求",
+        "record-task-acceptance",
+        r?.acceptance || "",
+        "textarea",
+      );
+      if (r?.migrationKey) {
+        let source;
+        try {
+          const key = JSON.parse(r.migrationKey);
+          if (key[0] === "plan")
+            source = state().plans.find((p) => p.id === key[1]);
+        } catch {}
+        if (source)
+          extra.append(
+            button(
+              "来源资料：" + source.title,
+              () => {
+                $("record-dialog").close();
+                detail("plans", source.id);
+              },
+              "relation-link",
+            ),
+          );
+      }
+    }
     if (["projects", "plans"].includes(kind)) {
       parentField(extra, kind, r, "record-parent");
       if (kind === "projects")
         field(
           extra,
-          "事项类型",
+          "项目类型",
           "record-item-kind",
           r?.kind || "learning",
           "select",
@@ -605,7 +686,28 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         r?.directionIds,
       );
       field(extra, "概述", "record-summary", r?.summary || "", "textarea");
-      field(extra, "下一步", "record-next-step", r?.nextStep || "", "textarea");
+      field(
+        extra,
+        "推进备注（不另建任务）",
+        "record-next-step",
+        r?.nextStep || "",
+        "textarea",
+      );
+      if (kind === "plans")
+        field(
+          extra,
+          "资料类型",
+          "record-material-type",
+          r?.materialType === "action"
+            ? "reference"
+            : r?.materialType || "reference",
+          "select",
+          [
+            ["proposal", "路线建议"],
+            ["reference", "参考资料"],
+            ["milestone", "阶段里程碑"],
+          ],
+        );
       field(
         extra,
         "采纳状态",
@@ -639,7 +741,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         );
         const rel = el("div", "relation-editor");
         rel.id = "record-relations";
-        rel.append(el("p", "field-hint", "事项关系 · 前置依赖需由你确认"));
+        rel.append(el("p", "field-hint", "项目关系 · 前置依赖需由你确认"));
         for (const p of state().projects.filter((p) => p.id !== r?.id)) {
           const row = el("div", "relation-editor-row");
           const old = r?.relations?.find((link) => link.targetId === p.id);
@@ -651,7 +753,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
             "select",
             [
               ["", "无关联"],
-              ["related", "相关事项"],
+              ["related", "相关项目"],
               ["method", "采用方法"],
               ["research", "相关研究"],
               ["depends", "前置依赖"],
@@ -674,7 +776,35 @@ export function initStrategyEditor(ctx, common, selectGoal) {
   function readEditor(kind, item) {
     if (kind === "sites") return item;
     item.goalIds = checked("record-goals");
-    if (kind !== "projects") item.itemIds = checked("record-items");
+    if (!["projects", "tasks"].includes(kind))
+      item.itemIds = checked("record-items");
+    if (kind === "tasks") {
+      item.projectId = $("record-project").value;
+      const p = state().projects.find((p) => p.id === item.projectId);
+      const original = state().tasks.find((t) => t.id === item.id);
+      item.itemIds =
+        original && item.projectId === original.projectId
+          ? [...original.itemIds]
+          : Array.from(
+              new Set([
+                ...(item.projectId ? [item.projectId] : []),
+                ...(original?.itemIds || []).filter(
+                  (id) => id !== original?.projectId,
+                ),
+              ]),
+            );
+      if (!item.goalIds.length && p) item.goalIds = [...p.goalIds];
+      item.scheduledFor = $("record-scheduled").value;
+      item.priority = $("record-priority").value;
+      item.adoption = $("record-adoption").value;
+      item.body = $("record-task-body").value.trim();
+      item.acceptance = $("record-task-acceptance").value.trim();
+      item.execution = item.done
+        ? "completed"
+        : item.execution === "completed"
+          ? "not_started"
+          : item.execution || "not_started";
+    }
     if (["projects", "plans"].includes(kind)) {
       const parent = readParent($("record-parent").value);
       if (stable(item.parentRef ?? null) !== stable(parent))
@@ -704,15 +834,29 @@ export function initStrategyEditor(ctx, common, selectGoal) {
               $("record-relations").querySelectorAll("input[data-confirm]"),
             ).find((c) => c.dataset.confirm === s.dataset.target).checked,
           }));
-      } else {
-        const previous = state().plans.find((p) => p.id === item.id);
-        item.execution =
-          previous && previous.status === item.status
-            ? previous.execution
-            : { next: "not_started", active: "active", done: "completed" }[
-                item.status
-              ];
+      } else if (item.materialType !== "action") {
+        item.materialType = $("record-material-type").value;
+        item.needsReview =
+          state().plans.find((p) => p.id === item.id)?.materialType ===
+          item.materialType
+            ? !!state().plans.find((p) => p.id === item.id)?.needsReview
+            : false;
       }
+    } else if (kind === "tasks") {
+      const previous = state().tasks.find((t) => t.id === item.id);
+      const project = state().projects.find((p) => p.id === item.projectId);
+      const directions = previous?.directionIds || item.directionIds || [];
+      if (previous && item.direction === previous.direction)
+        item.directionIds = [...directions];
+      else if (item.direction)
+        item.directionIds = Array.from(
+          new Set([
+            item.direction,
+            ...directions.filter((d) => d !== previous?.direction),
+          ]),
+        );
+      else
+        item.directionIds = previous ? [] : [...(project?.directionIds || [])];
     } else item.directionIds = item.direction ? [item.direction] : [];
     return item;
   }

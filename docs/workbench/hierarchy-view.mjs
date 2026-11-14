@@ -1,4 +1,5 @@
 import { buildHierarchy } from "#workbench/hierarchy";
+import { isProject, completeTask } from "#workbench/work-model";
 import {
   adoptionNames,
   executionNames,
@@ -41,17 +42,28 @@ export function initHierarchyView(ctx, common, actions) {
     row.append(name);
     const meta = el("span", "hierarchy-meta");
     if (node.reference) meta.append(badge("关联引用"));
+    else if (node.collection === "tasks")
+      meta.append(
+        badge("任务"),
+        badge(node.record.done ? "已完成" : "待完成"),
+        badge(adoptionNames[node.record.adoption]),
+      );
     else if (node.collection === "projects")
       meta.append(
         badge(kindNames[node.record.kind]),
         badge(adoptionNames[node.record.adoption]),
-        badge(executionNames[node.record.execution]),
+        badge(
+          isProject(node.record)
+            ? executionNames[node.record.execution]
+            : "知识资料",
+        ),
       );
     else if (node.collection === "plans")
       meta.append(
-        badge("阶段计划"),
+        badge(
+          node.record.materialType === "milestone" ? "阶段里程碑" : "方案资料",
+        ),
         badge(adoptionNames[node.record.adoption]),
-        badge(executionNames[node.record.execution]),
       );
     else if (node.collection === "archives")
       meta.append(badge(archiveNames[node.record.status]));
@@ -82,7 +94,7 @@ export function initHierarchyView(ctx, common, actions) {
         bind("编辑", () => actions.edit("goals", node.id));
       else {
         bind(
-          node.collection === "archives"
+          ["archives", "tasks"].includes(node.collection)
             ? "查看记录"
             : node.reference
               ? "查看主条目"
@@ -95,7 +107,8 @@ export function initHierarchyView(ctx, common, actions) {
             : ctx.openRecord(node.collection, node.id),
         );
         if (
-          ["projects", "plans"].includes(node.collection) &&
+          (["tasks"].includes(node.collection) ||
+            (node.collection === "projects" && isProject(node.record))) &&
           node.record.adoption !== "adopted"
         )
           bind("采纳", () =>
@@ -105,6 +118,12 @@ export function initHierarchyView(ctx, common, actions) {
               r.demo = false;
             }),
           );
+        if (node.collection === "tasks" && node.record.adoption === "adopted")
+          bind(node.record.done ? "重新打开" : "完成", () =>
+            ctx.commit((s) =>
+              completeTask(s, node.id, !node.record.done, node.record),
+            ),
+          );
       }
       row.append(buttons);
     }
@@ -113,7 +132,22 @@ export function initHierarchyView(ctx, common, actions) {
   function childGroups(node) {
     if (node.collection === "group") return node.children;
     const records = node.children.filter((c) => c.collection === "archives"),
-      rest = node.children.filter((c) => c.collection !== "archives");
+      materials = node.children.filter(
+        (c) =>
+          c.collection === "plans" ||
+          (c.collection === "projects" && !isProject(c.record)),
+      ),
+      rest = node.children.filter(
+        (c) => c.collection !== "archives" && !materials.includes(c),
+      );
+    if (materials.length)
+      rest.push({
+        key: "materials:" + node.key,
+        collection: "group",
+        id: node.key,
+        record: { title: "方案与知识资料 · " + materials.length },
+        children: materials,
+      });
     if (records.length)
       rest.push({
         key: "folder:" + node.key,
@@ -249,7 +283,7 @@ export function initHierarchyView(ctx, common, actions) {
         el(
           "li",
           "strategy-empty",
-          "当前筛选下没有归属内容。可清除筛选，或新建目标和事项。",
+          "当前筛选下没有归属内容。可清除筛选，或新建目标和项目。",
         ),
       );
     else appendBatch(root, roots);

@@ -48,7 +48,7 @@ test("backup round-trip preserves notes, project steps and plan state", () => {
   });
   const restored = parseBackup(serializeBackup(state));
   assert.equal(restored.notes[0].body, "思考 <script> & 家庭");
-  assert.equal(restored.projects[0].steps[0].done, true);
+  assert.equal(restored.tasks.find((t) => t.sourceStepId === "s1").done, true);
   assert.equal(restored.plans[0].status, "active");
 });
 

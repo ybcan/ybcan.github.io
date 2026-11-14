@@ -1,16 +1,19 @@
+import { tasksForProject, isProject } from "#workbench/work-model";
+import { initTaskViews } from "#workbench/task-views";
 import { DIRECTIONS, safeUrl } from "#workbench/workspace";
 const $ = (id) => document.getElementById(id);
 export function initWorkspaceViews(ctx) {
   const { el, icon, commit, openRecord, matches, setView } = ctx;
   const names = {
-    tasks: "待办",
-    projects: "学习",
-    plans: "计划",
+    tasks: "任务",
+    projects: "项目",
+    plans: "方案资料",
     notes: "笔记",
     sites: "网站",
     experiments: "实验",
   };
   let notesExpanded = false;
+  const taskViews = initTaskViews(ctx);
   function tag(id) {
     const d = DIRECTIONS.find((x) => x.id === id);
     const node = el("span", "tag");
@@ -62,14 +65,16 @@ export function initWorkspaceViews(ctx) {
     root.replaceChildren();
     const projects = ctx
       .state()
-      .projects.filter((p) => p.adoption === "adopted" && matches(p));
-    $("project-summary").textContent = `${projects.length} 个跟踪事项`;
+      .projects.filter(
+        (p) => isProject(p) && p.adoption === "adopted" && matches(p),
+      );
+    $("project-summary").textContent = `${projects.length} 个跟踪项目`;
     if (!projects.length)
       empty(
         root,
         ctx.query() || ctx.direction()
           ? "这个筛选下，还没有学习项目。"
-          : "把想学的技术或方法，拆成可以完成的步骤。",
+          : "把想学的技术或方法，拆成可以完成的任务。",
         "projects",
       );
     const visibleProjects =
@@ -90,42 +95,30 @@ export function initWorkspaceViews(ctx) {
       const content = el("div", "project-content"),
         title = el("div", "project-title-row");
       title.append(el("h3", null, project.title), tag(project.direction));
-      const completed = project.steps.filter((x) => x.done).length;
-      const next = project.steps.find((x) => !x.done);
+      const tasks = tasksForProject(ctx.state(), project.id).filter(
+        (t) => t.adoption === "adopted" && !t.archived,
+      );
+      const completed = tasks.filter((x) => x.done).length;
+      const next = tasks.find((x) => !x.done);
       const subtitle = el(
         "p",
         "project-next",
-        project.steps.length
+        tasks.length
           ? next
             ? "下一步：" + next.title
-            : "这一组步骤已完成，记下收获吧。"
-          : "还没有学习步骤，点击编辑来拆解。",
+            : "项目任务已完成，记下收获吧。"
+          : "还没有正式任务，从项目详情添加。",
       );
       const count = el(
         "span",
         "project-count",
-        `${completed} / ${project.steps.length} 步`,
+        `${completed} / ${tasks.length} 项任务`,
       );
       content.append(title, subtitle, count);
       if (project.demo) content.append(el("span", "example-label", " · 示例"));
       const steps = el("div", "project-steps");
-      project.steps.forEach((step, index) => {
-        if (index) steps.append(el("span", "step-arrow", "›"));
-        const label = el("label", "step-pill" + (step.done ? " done" : ""));
-        const input = el("input");
-        input.type = "checkbox";
-        input.checked = step.done;
-        input.dataset.focusKey = step.id;
-        input.addEventListener("change", () =>
-          commit((s) => {
-            const p = s.projects.find((x) => x.id === project.id);
-            p.steps.find((x) => x.id === step.id).done = input.checked;
-            p.demo = false;
-          }),
-        );
-        label.append(input, el("span", null, step.title));
-        steps.append(label);
-      });
+      for (const task of tasks.slice(0, 5))
+        steps.append(taskViews.row(task, "project-" + project.id));
       card.append(symbol, content, steps, editButton("projects", project));
       ctx.strategy()?.decorateProject(card, project);
       root.append(card);
@@ -134,7 +127,7 @@ export function initWorkspaceViews(ctx) {
       const more = el(
         "button",
         "subtle-link more-ctx.strategy()",
-        `查看全部 ${projects.length} 个事项 →`,
+        `查看全部 ${projects.length} 个项目 →`,
       );
       more.addEventListener("click", () => setView("learning"));
       root.append(more);
@@ -142,131 +135,10 @@ export function initWorkspaceViews(ctx) {
   }
 
   function renderPlans() {
-    const root = $("plan-columns");
-    root.replaceChildren();
-    if (
-      !ctx.state().plans.some((p) => p.adoption === "adopted" && matches(p))
-    ) {
-      root.append(
-        el(
-          "p",
-          "section-description empty-plans",
-          "还没有正式计划，可以从下方候选规划中选择，也可以自己新建。",
-        ),
-      );
-      return;
-    }
-    const statuses = [
-      ["next", "准备开始", "#b99be9"],
-      ["active", "正在推进", "#7ce8ee"],
-      ["done", "回顾与沉淀", "#c0a1ed"],
-    ];
-    for (const [status, name, color] of statuses) {
-      const section = el("section", "plan-column");
-      section.dataset.status = status;
-      section.style.setProperty("--column", color);
-      const plans = ctx
-        .state()
-        .plans.filter(
-          (p) => p.adoption === "adopted" && p.status === status && matches(p),
-        );
-      const heading = el("div", "column-heading", name);
-      heading.append(el("span", "count", String(plans.length)));
-      const cards = el("div", "plan-cards");
-      if (!plans.length) empty(cards, "留一点空间给下一步。");
-      for (const plan of plans) {
-        const card = el("article", "plan-card");
-        const title = el("button", "plan-title", plan.title);
-        title.addEventListener("click", () => openRecord("plans", plan.id));
-        const footer = el("div", "plan-footer"),
-          advance = el("button", "advance-plan");
-        advance.setAttribute("aria-label", `推进计划：${plan.title}`);
-        advance.title =
-          status === "done"
-            ? "重新准备"
-            : status === "next"
-              ? "开始推进"
-              : "完成并沉淀";
-        advance.append(icon(status === "done" ? "return" : "arrow-right"));
-        advance.addEventListener("click", () =>
-          commit((s) => {
-            const item = s.plans.find((x) => x.id === plan.id);
-            if (
-              !item ||
-              item.status !== plan.status ||
-              item.execution !== plan.execution ||
-              item.adoption !== plan.adoption
-            )
-              throw Error("计划状态已有变化，请刷新后再推进。");
-            item.status = { next: "active", active: "done", done: "next" }[
-              status
-            ];
-            item.execution = {
-              next: "not_started",
-              active: "active",
-              done: "completed",
-            }[item.status];
-            item.demo = false;
-          }),
-        );
-        footer.append(tag(plan.direction), advance);
-        if (plan.demo)
-          footer.insertBefore(el("span", "example-label", "示例"), advance);
-        card.append(title, editButton("plans", plan), footer);
-        if (plan.dueDate)
-          card.append(el("p", "plan-meta", dueLabel(plan.dueDate)));
-        ctx.strategy()?.decoratePlan(card, plan);
-        cards.append(card);
-      }
-      section.append(heading, cards);
-      root.append(section);
-    }
+    taskViews.schedule("plan-columns");
   }
-
   function renderTasks() {
-    const root = $("tasks-list");
-    root.replaceChildren();
-    const tasks = ctx.state().tasks.filter(matches);
-    $("task-count").textContent = String(tasks.filter((x) => !x.done).length);
-    const filter = $("task-filter").value;
-    const visible = tasks.filter(
-      (t) => filter === "all" || (filter === "done" ? t.done : !t.done),
-    );
-    if (!visible.length) {
-      empty(
-        root,
-        filter === "done"
-          ? "完成的事情会留在这里。"
-          : "暂时没有待办，从一件小事开始。",
-      );
-      root.firstChild.classList.add("task-empty");
-    }
-    for (const task of visible) {
-      const row = el("div", "task-row" + (task.done ? " done" : ""));
-      const check = el("input");
-      check.type = "checkbox";
-      check.checked = task.done;
-      check.id = "task-" + task.id;
-      check.setAttribute("aria-label", `完成待办：${task.title}`);
-      check.dataset.focusKey = task.id;
-      check.addEventListener("change", () =>
-        commit((s) => {
-          const item = s.tasks.find((x) => x.id === task.id);
-          item.done = check.checked;
-          item.demo = false;
-        }),
-      );
-      const content = el("div", "task-content"),
-        title = el("label", "task-title", task.title);
-      title.htmlFor = check.id;
-      const meta = el("div", "task-meta");
-      meta.append(tag(task.direction));
-      if (task.demo) meta.append(el("span", "example-label", "示例"));
-      if (task.dueDate) meta.append(el("span", null, dueLabel(task.dueDate)));
-      content.append(title, meta);
-      row.append(check, content, editButton("tasks", task));
-      root.append(row);
-    }
+    taskViews.render();
   }
 
   function renderNotes() {

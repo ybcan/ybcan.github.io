@@ -13,36 +13,38 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 5 56 18v28L32 59 8 46V18ZM8 18l24 14 24-14M32 32v27M32 5v27' fill='none' stroke='%237ce8ee' stroke-width='4'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="./workbench/styles.css?v=0.4.1" />
-    <link rel="stylesheet" href="./workbench/strategy.css?v=0.4.1" />
+    <link rel="stylesheet" href="./workbench/styles.css?v=0.5.0" />
+    <link rel="stylesheet" href="./workbench/strategy.css?v=0.5.0" />
     <script type="importmap">
       {
         "imports": {
-          "#workbench/about": "./workbench/about.mjs?v=0.4.1",
-          "#workbench/app": "./workbench/app.mjs?v=0.4.1",
-          "#workbench/backup-settings": "./workbench/backup-settings.mjs?v=0.4.1",
-          "#workbench/dom": "./workbench/dom.mjs?v=0.4.1",
-          "#workbench/file-backups": "./workbench/file-backups.mjs?v=0.4.1",
-          "#workbench/focus-state": "./workbench/focus-state.mjs?v=0.4.1",
-          "#workbench/hierarchy-view": "./workbench/hierarchy-view.mjs?v=0.4.1",
-          "#workbench/hierarchy": "./workbench/hierarchy.mjs?v=0.4.1",
-          "#workbench/layout": "./workbench/layout.mjs?v=0.4.1",
-          "#workbench/limits": "./workbench/limits.mjs?v=0.4.1",
-          "#workbench/record-editor": "./workbench/record-editor.mjs?v=0.4.1",
-          "#workbench/storage": "./workbench/storage.mjs?v=0.4.1",
-          "#workbench/strategy-common": "./workbench/strategy-common.mjs?v=0.4.1",
-          "#workbench/strategy-editor": "./workbench/strategy-editor.mjs?v=0.4.1",
-          "#workbench/strategy-ui": "./workbench/strategy-ui.mjs?v=0.4.1",
-          "#workbench/strategy": "./workbench/strategy.mjs?v=0.4.1",
-          "#workbench/tools": "./workbench/tools.mjs?v=0.4.1",
-          "#workbench/update-preview": "./workbench/update-preview.mjs?v=0.4.1",
-          "#workbench/workspace-v1": "./workbench/workspace-v1.mjs?v=0.4.1",
-          "#workbench/workspace-views": "./workbench/workspace-views.mjs?v=0.4.1",
-          "#workbench/workspace": "./workbench/workspace.mjs?v=0.4.1"
+          "#workbench/about": "./workbench/about.mjs?v=0.5.0",
+          "#workbench/app": "./workbench/app.mjs?v=0.5.0",
+          "#workbench/backup-settings": "./workbench/backup-settings.mjs?v=0.5.0",
+          "#workbench/dom": "./workbench/dom.mjs?v=0.5.0",
+          "#workbench/file-backups": "./workbench/file-backups.mjs?v=0.5.0",
+          "#workbench/focus-state": "./workbench/focus-state.mjs?v=0.5.0",
+          "#workbench/hierarchy-view": "./workbench/hierarchy-view.mjs?v=0.5.0",
+          "#workbench/hierarchy": "./workbench/hierarchy.mjs?v=0.5.0",
+          "#workbench/layout": "./workbench/layout.mjs?v=0.5.0",
+          "#workbench/limits": "./workbench/limits.mjs?v=0.5.0",
+          "#workbench/record-editor": "./workbench/record-editor.mjs?v=0.5.0",
+          "#workbench/storage": "./workbench/storage.mjs?v=0.5.0",
+          "#workbench/strategy-common": "./workbench/strategy-common.mjs?v=0.5.0",
+          "#workbench/strategy-editor": "./workbench/strategy-editor.mjs?v=0.5.0",
+          "#workbench/strategy-ui": "./workbench/strategy-ui.mjs?v=0.5.0",
+          "#workbench/strategy": "./workbench/strategy.mjs?v=0.5.0",
+          "#workbench/tools": "./workbench/tools.mjs?v=0.5.0",
+          "#workbench/update-preview": "./workbench/update-preview.mjs?v=0.5.0",
+          "#workbench/workspace-v1": "./workbench/workspace-v1.mjs?v=0.5.0",
+          "#workbench/workspace-views": "./workbench/workspace-views.mjs?v=0.5.0",
+          "#workbench/workspace": "./workbench/workspace.mjs?v=0.5.0",
+          "#workbench/work-model": "./workbench/work-model.mjs?v=0.5.0",
+          "#workbench/task-views": "./workbench/task-views.mjs?v=0.5.0"
         }
       }
     </script>
-    <script type="module" src="./workbench/app.mjs?v=0.4.1"></script>
+    <script type="module" src="./workbench/app.mjs?v=0.5.0"></script>
   </head>
   <body>
     <a href="#main" class="skip-link">跳到工作区</a>
@@ -62,7 +64,7 @@
             <span data-icon="document"></span>积累与归档
           </button>
           <button data-view="tasks">
-            <span data-icon="check"></span>待办事项
+            <span data-icon="check"></span>任务与计划
           </button>
           <button data-view="lab">
             <span data-icon="flask"></span>实验空间
@@ -177,6 +179,7 @@
               <option value="all">全部学习记录</option>
               <option value="pending">待继续</option>
               <option value="recorded">已归档</option>
+              <option value="materials">方案与知识资料</option>
               <option value="history">完成历史</option></select
             ><button class="button small" id="archive-update-button">
               导入新归档
@@ -217,7 +220,9 @@
         >
           <div class="section-heading">
             <h2>目标与内容归属</h2>
-            <span class="mini-label">目标 → 事项 → 阶段计划 / 学习记录</span>
+            <span class="mini-label"
+              >目标 → 项目 → 任务 · 计划是时间安排，待办是未完成任务</span
+            >
           </div>
           <p class="section-description" id="tree-scope"></p>
           <ul id="strategy-tree" class="strategy-tree"></ul>
@@ -230,15 +235,15 @@
           >
             <div class="section-heading">
               <h2 id="learning-heading">
-                <span data-icon="layers"></span>当前跟踪事项
+                <span data-icon="layers"></span>当前项目
               </h2>
               <div class="heading-actions">
                 <span class="mini-label" id="project-summary"></span
                 ><button
                   class="icon-button"
                   data-new="projects"
-                  aria-label="新建学习任务"
-                  title="新建学习任务"
+                  aria-label="新建项目"
+                  title="新建项目"
                 >
                   <span data-icon="plus"></span>
                 </button>
@@ -246,14 +251,14 @@
             </div>
             <div class="projects-list" id="projects-list"></div>
             <div class="section-heading plan-heading">
-              <h2><span data-icon="calendar"></span>计划推进</h2>
+              <h2><span data-icon="calendar"></span>任务安排</h2>
               <div class="heading-actions">
-                <span class="mini-label">从准备到沉淀</span
+                <span class="mini-label">同一任务，按时间查看</span
                 ><button
                   class="icon-button"
-                  data-new="plans"
-                  aria-label="新建计划"
-                  title="新建计划"
+                  data-new="tasks"
+                  aria-label="新建任务"
+                  title="新建任务"
                 >
                   <span data-icon="plus"></span>
                 </button>
@@ -270,7 +275,7 @@
             >
               <div class="section-heading">
                 <h2 id="tasks-heading">
-                  <span data-icon="check"></span>待办事项
+                  <span data-icon="check"></span>任务与计划
                   <span class="count" id="task-count"></span>
                 </h2>
                 <select
@@ -280,10 +285,29 @@
                 >
                   <option value="pending">待完成</option>
                   <option value="done">已完成</option>
-                  <option value="all">全部</option>
+                  <option value="all">全部任务</option>
+                  <option value="today">今日安排</option>
+                  <option value="week">近期安排</option>
+                  <option value="candidate">待确认建议</option>
                 </select>
               </div>
+              <div class="learning-mode task-mode">
+                <button
+                  id="task-mode-todo"
+                  class="button small active"
+                  aria-pressed="true"
+                >
+                  待办</button
+                ><button
+                  id="task-mode-planning"
+                  class="button small"
+                  aria-pressed="false"
+                >
+                  计划视图
+                </button>
+              </div>
               <div id="tasks-list"></div>
+              <div id="task-schedule" class="plan-columns" hidden></div>
               <form class="inline-add" id="task-quick">
                 <span data-icon="plus"></span
                 ><input
@@ -452,9 +476,9 @@
         </div>
         <label class="field" id="kind-field"
           >记录类型<select id="record-kind">
-            <option value="tasks">待办事项</option>
-            <option value="projects">学习任务</option>
-            <option value="plans">计划</option>
+            <option value="tasks">任务</option>
+            <option value="projects">项目</option>
+            <option value="plans">方案资料</option>
             <option value="notes">随手记</option>
             <option value="sites">常用网站</option>
             <option value="experiments">实验</option>
@@ -477,11 +501,12 @@
           <label class="field" id="direction-field"
             >关联方向<select id="record-direction"></select></label
           ><label class="field" id="due-field"
-            >目标日期（可不填）<input id="record-due" type="date"
+            >截止日期（可不填）<input id="record-due" type="date"
           /></label>
         </div>
         <label class="field" id="steps-field" hidden
-          >学习步骤 <span class="field-hint">每行一项，最多 100 项</span
+          >初始任务
+          <span class="field-hint">每行一条，仅在新建项目时批量添加</span
           ><textarea
             id="record-steps"
             maxlength="30000"

@@ -52,8 +52,11 @@ const item = {
 test("migration preserves exact identities, completion and plan status without inventing overall mastery", () => {
   const state = migrateLegacy(old());
   assert.equal(state.tasks[0].done, true);
-  assert.equal(state.projects[0].steps[0].id, "step");
-  assert.equal(state.projects[0].steps[0].done, true);
+  assert.equal(
+    state.tasks.find((t) => t.sourceStepId === "step").sourceStepId,
+    "step",
+  );
+  assert.equal(state.tasks.find((t) => t.sourceStepId === "step").done, true);
   assert.equal(state.projects[0].execution, "unknown");
   assert.deepEqual(state.projects[0].directionIds, ["learn"]);
   assert.deepEqual(state.projects[0].goalIds, []);

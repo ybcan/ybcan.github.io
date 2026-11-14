@@ -5,15 +5,16 @@ export function initRecordEditor(ctx) {
   const { el, icon, commit, toast } = ctx;
   const confirmAction = ctx.confirm;
   const uid = () => crypto.randomUUID();
-  let editing = null;
+  let editing = null,
+    creationSeed = {};
   function updateRecordFields() {
     const kind = $("record-kind").value;
     $("record-heading").textContent =
       (editing ? "编辑" : "新建") +
       {
-        tasks: "待办事项",
-        projects: "学习任务",
-        plans: "计划",
+        tasks: "任务",
+        projects: "项目",
+        plans: "方案资料",
         notes: "随手记",
         sites: "常用网站",
         experiments: "实验",
@@ -25,10 +26,8 @@ export function initRecordEditor(ctx) {
     $("record-body").required = kind === "notes";
     $("direction-field").hidden = kind === "sites";
     $("due-field").hidden = !["tasks", "plans"].includes(kind);
-    $("steps-field").hidden = kind !== "projects";
-    $("status-field").hidden = !["tasks", "plans", "experiments"].includes(
-      kind,
-    );
+    $("steps-field").hidden = kind !== "projects" || !!editing;
+    $("status-field").hidden = !["tasks", "experiments"].includes(kind);
     $("url-field").hidden = !["sites", "experiments"].includes(kind);
     $("record-url").required = kind === "sites";
     $("url-hint").textContent =
@@ -61,11 +60,14 @@ export function initRecordEditor(ctx) {
       .strategy()
       ?.fillEditor(
         kind,
-        editing ? ctx.state()[kind].find((x) => x.id === editing.id) : null,
+        editing
+          ? ctx.state()[kind].find((x) => x.id === editing.id)
+          : creationSeed,
       );
   }
 
-  function openRecord(kind = "tasks", id = null) {
+  function openRecord(kind = "tasks", id = null, seed = {}) {
+    creationSeed = seed;
     if (["goals", "archives"].includes(kind))
       return ctx.strategy().edit(kind, id);
     const item = id ? ctx.state()[kind].find((x) => x.id === id) : null;
@@ -75,10 +77,11 @@ export function initRecordEditor(ctx) {
     $("record-kind").value = kind;
     $("kind-field").hidden = !!editing;
     updateRecordFields();
-    $("record-title").value = item?.title || item?.name || "";
-    $("record-direction").value = item?.direction ?? ctx.direction();
+    $("record-title").value = item?.title || item?.name || seed.title || "";
+    $("record-direction").value =
+      item?.direction ?? seed.direction ?? ctx.direction();
     $("record-body").value = item?.body || item?.description || "";
-    $("record-steps").value = item?.steps?.map((x) => x.title).join("\n") || "";
+    $("record-steps").value = "";
     $("record-due").value = item?.dueDate || "";
     $("record-url").value = item?.url || "";
     if (item)
@@ -121,7 +124,7 @@ export function initRecordEditor(ctx) {
       ? ctx.state()[kind].find((x) => x.id === editing.id)
       : null;
     const title = $("record-title").value.trim();
-    const item = { ...previous, id: previous?.id || uid() };
+    const item = { ...creationSeed, ...previous, id: previous?.id || uid() };
     try {
       if (kind === "sites") {
         item.name = title;
@@ -141,9 +144,9 @@ export function initRecordEditor(ctx) {
           if ($("record-due").value) item.dueDate = $("record-due").value;
         }
         if (kind === "tasks") item.done = $("record-status").value === "done";
-        if (kind === "projects")
-          item.steps = preserveSteps($("record-steps").value, previous?.steps);
-        if (kind === "plans") item.status = $("record-status").value;
+        if (kind === "projects" && !previous)
+          item.steps = preserveSteps($("record-steps").value);
+        if (kind === "plans") item.status = previous?.status || "next";
         if (kind === "experiments") {
           item.description = $("record-body").value.trim();
           item.status = $("record-status").value;
@@ -203,7 +206,7 @@ export function initRecordEditor(ctx) {
     if (
       !(await confirmAction(
         "删除这条记录？",
-        "仅删除所选记录，保留其下的计划和学习记录并解除关联。删除后可从备份恢复。",
+        "仅删除所选记录，保留关联的任务、资料和学习记录并解除关联。删除后可从备份恢复。",
         "删除",
       ))
     )

@@ -12,4 +12,4 @@ if not env.get('CHROMIUM_PATH'):
     else:
         with sync_playwright() as p:
             env['CHROMIUM_PATH'] = p.chromium.executable_path
-raise SystemExit(subprocess.call([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'editing_browser.py'], env=env))
+raise SystemExit(subprocess.call([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'unified_browser.py'], env=env))

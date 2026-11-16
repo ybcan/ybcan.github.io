@@ -54,6 +54,8 @@ class CockpitTests(unittest.TestCase):
     def add_record(self, kind, title, direction='', body=None, steps=None):
         self.page.locator('#quick-add').click()
         self.page.locator('#record-kind').select_option(kind)
+        if kind == 'projects':
+            self.page.locator('#record-project-more summary').click()
         if kind == 'notes':
             self.page.locator('#record-body').fill(body or title)
         else:

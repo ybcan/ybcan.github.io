@@ -1,8 +1,8 @@
 // @ts-check
 export const APP_INFO = {
-  version: "0.5.0",
+  version: "0.5.1",
   author: "ybcan",
-  updated: "2026-11-14",
+  updated: "2026-11-16",
   source: "https://github.com/ybcan/ybcan.github.io",
 };
 /** @param {{el:(tag:string,cls?:string,text?:string)=>any}} ctx */

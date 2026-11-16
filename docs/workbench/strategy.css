@@ -835,3 +835,16 @@ input[type="checkbox"] {
   width: 28px;
   height: 28px;
 }
+.project-more {
+  margin-top: 16px;
+  border-top: 1px solid var(--line, #304052);
+  padding-top: 14px;
+}
+.project-more > summary {
+  cursor: pointer;
+  color: #a9bacd;
+  font-size: 12px;
+}
+.project-more-content {
+  padding-top: 6px;
+}

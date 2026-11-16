@@ -558,7 +558,12 @@ document
   .forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
 $("open-lab").addEventListener("click", () => setView("lab"));
 $("quick-add").addEventListener("click", () =>
-  openRecord({ learning: "projects", lab: "experiments" }[view] || "tasks"),
+  openRecord(
+    { learning: "projects", lab: "experiments" }[view] || "tasks",
+    null,
+    {},
+    { typePicker: true },
+  ),
 );
 
 $("task-filter").addEventListener("change", render);

@@ -7,7 +7,14 @@ export function initRecordEditor(ctx) {
   const uid = () => crypto.randomUUID();
   let editing = null,
     creationSeed = {};
+  const movableFields = ["direction-field", "steps-field"].map((id) => {
+    const node = $(id),
+      anchor = document.createComment(id);
+    node.before(anchor);
+    return { node, anchor };
+  });
   function updateRecordFields() {
+    for (const { node, anchor } of movableFields) anchor.after(node);
     const kind = $("record-kind").value;
     $("record-heading").textContent =
       (editing ? "编辑" : "新建") +
@@ -22,6 +29,12 @@ export function initRecordEditor(ctx) {
     $("title-field").hidden = kind === "notes";
     $("record-title").required = kind !== "notes";
     $("record-title").maxLength = kind === "sites" ? 80 : 300;
+    $("title-field").firstChild.textContent =
+      kind === "projects" ? "项目名称" : "名称";
+    $("record-title").placeholder =
+      kind === "projects"
+        ? "例如：完成一个可运行的技术原型"
+        : "想学什么，或想做什么？";
     $("body-field").hidden = !["notes", "experiments"].includes(kind);
     $("record-body").required = kind === "notes";
     $("direction-field").hidden = kind === "sites";
@@ -64,9 +77,11 @@ export function initRecordEditor(ctx) {
           ? ctx.state()[kind].find((x) => x.id === editing.id)
           : creationSeed,
       );
+    const more = $("record-project-more-content");
+    if (more) more.prepend(...movableFields.map(({ node }) => node));
   }
 
-  function openRecord(kind = "tasks", id = null, seed = {}) {
+  function openRecord(kind = "tasks", id = null, seed = {}, options = {}) {
     creationSeed = seed;
     if (["goals", "archives"].includes(kind))
       return ctx.strategy().edit(kind, id);
@@ -75,11 +90,14 @@ export function initRecordEditor(ctx) {
     editing = item ? { kind, id, original: recordSignature(item) } : null;
     $("record-form").reset();
     $("record-kind").value = kind;
-    $("kind-field").hidden = !!editing;
+    $("kind-field").hidden =
+      !!editing || (kind === "projects" && !options.typePicker);
     updateRecordFields();
     $("record-title").value = item?.title || item?.name || seed.title || "";
     $("record-direction").value =
       item?.direction ?? seed.direction ?? ctx.direction();
+    if (kind === "projects" && !editing)
+      $("record-goals").dispatchEvent(new Event("change"));
     $("record-body").value = item?.body || item?.description || "";
     $("record-steps").value = "";
     $("record-due").value = item?.dueDate || "";

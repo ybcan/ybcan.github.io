@@ -319,7 +319,14 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     root.append(group);
   }
   const checked = (id) =>
-    Array.from($(id)?.querySelectorAll("input:checked") || [], (i) => i.value);
+    $(id)?.tagName === "SELECT"
+      ? $(id).value
+        ? [$(id).value]
+        : []
+      : Array.from(
+          $(id)?.querySelectorAll("input:checked") || [],
+          (i) => i.value,
+        );
   function edit(collection, id = null) {
     const existing = id ? state()[collection].find((r) => r.id === id) : null;
     if (id && !existing) return;
@@ -590,37 +597,88 @@ export function initStrategyEditor(ctx, common, selectGoal) {
     extra.replaceChildren();
     extra.hidden = kind === "sites";
     if (extra.hidden) return;
-    checkboxGroup(
-      extra,
-      "关联目标（可多选）",
-      "record-goals",
-      state().goals.map((g) => [g.id, g.title]),
-      r?.goalIds,
-    );
-    if (!["projects", "tasks"].includes(kind))
+    const simpleProject = kind === "projects" && !r?.id;
+    let fields = extra;
+    if (simpleProject) {
+      const goal = field(
+        extra,
+        "关联目标（可选）",
+        "record-goals",
+        r?.goalIds?.[0] || "",
+        "select",
+        [["", "暂不关联"], ...state().goals.map((g) => [g.id, g.title])],
+      );
+      field(
+        extra,
+        "预期成果（可选）",
+        "record-acceptance",
+        r?.acceptance || "",
+        "textarea",
+      ).rows = 3;
+      extra.append(
+        el(
+          "p",
+          "field-hint",
+          "项目描述要交付的成果；具体动作在创建后添加为任务。",
+        ),
+      );
+      const more = el("details", "project-more");
+      more.id = "record-project-more";
+      more.append(el("summary", null, "更多设置"));
+      fields = el("div", "project-more-content");
+      fields.id = "record-project-more-content";
+      more.append(fields);
+      extra.append(more);
+      const updateDirections = () => {
+        const selected = state().goals.find((g) => g.id === goal.value);
+        const dirs =
+          selected?.directionIds ||
+          r?.directionIds ||
+          [ctx.direction()].filter(Boolean);
+        $("record-direction").value = dirs[0] || "";
+        for (const check of $("record-directions").querySelectorAll("input"))
+          check.checked = dirs.includes(check.value);
+      };
+      goal.addEventListener("change", updateDirections);
+    } else
       checkboxGroup(
         extra,
+        "关联目标（可多选）",
+        "record-goals",
+        state().goals.map((g) => [g.id, g.title]),
+        r?.goalIds,
+      );
+    if (!["projects", "tasks"].includes(kind))
+      checkboxGroup(
+        fields,
         "关联项目（可多选）",
         "record-items",
         state().projects.map((p) => [p.id, p.title]),
         r?.itemIds,
       );
     if (kind === "tasks") {
-      field(extra, "所属项目", "record-project", r?.projectId || "", "select", [
-        ["", "暂未归属"],
-        ...state()
-          .projects.filter((p) => isProject(p) || p.id === r?.projectId)
-          .map((p) => [p.id, p.title]),
-      ]);
       field(
-        extra,
+        fields,
+        "所属项目",
+        "record-project",
+        r?.projectId || "",
+        "select",
+        [
+          ["", "暂未归属"],
+          ...state()
+            .projects.filter((p) => isProject(p) || p.id === r?.projectId)
+            .map((p) => [p.id, p.title]),
+        ],
+      );
+      field(
+        fields,
         "安排日期",
         "record-scheduled",
         r?.scheduledFor || "",
         "date",
       );
       field(
-        extra,
+        fields,
         "优先级",
         "record-priority",
         r?.priority || "normal",
@@ -632,16 +690,16 @@ export function initStrategyEditor(ctx, common, selectGoal) {
         ],
       );
       field(
-        extra,
+        fields,
         "采纳状态",
         "record-adoption",
         r?.adoption || "adopted",
         "select",
         Object.entries(adoptionNames),
       );
-      field(extra, "任务说明", "record-task-body", r?.body || "", "textarea");
+      field(fields, "任务说明", "record-task-body", r?.body || "", "textarea");
       field(
-        extra,
+        fields,
         "验收要求",
         "record-task-acceptance",
         r?.acceptance || "",
@@ -668,26 +726,26 @@ export function initStrategyEditor(ctx, common, selectGoal) {
       }
     }
     if (["projects", "plans"].includes(kind)) {
-      parentField(extra, kind, r, "record-parent");
+      parentField(fields, kind, r, "record-parent");
       if (kind === "projects")
         field(
-          extra,
+          fields,
           "项目类型",
           "record-item-kind",
-          r?.kind || "learning",
+          r?.kind || (simpleProject ? "project" : "learning"),
           "select",
           Object.entries(kindNames),
         );
       checkboxGroup(
-        extra,
+        fields,
         "更多关联方向",
         "record-directions",
         DIRECTIONS.map((d) => [d.id, d.name]),
         r?.directionIds,
       );
-      field(extra, "概述", "record-summary", r?.summary || "", "textarea");
+      field(fields, "概述", "record-summary", r?.summary || "", "textarea");
       field(
-        extra,
+        fields,
         "推进备注（不另建任务）",
         "record-next-step",
         r?.nextStep || "",
@@ -695,7 +753,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
       );
       if (kind === "plans")
         field(
-          extra,
+          fields,
           "资料类型",
           "record-material-type",
           r?.materialType === "action"
@@ -709,7 +767,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
           ],
         );
       field(
-        extra,
+        fields,
         "采纳状态",
         "record-adoption",
         r?.adoption || "adopted",
@@ -718,27 +776,28 @@ export function initStrategyEditor(ctx, common, selectGoal) {
       );
       if (kind === "projects") {
         field(
-          extra,
+          fields,
           "执行状态",
           "record-execution",
-          r?.execution || "unknown",
+          r?.execution || (simpleProject ? "not_started" : "unknown"),
           "select",
           Object.entries(executionNames),
         );
         field(
-          extra,
+          fields,
           "跟进规则",
           "record-rule",
           r?.practiceRule || "",
           "textarea",
         );
-        field(
-          extra,
-          "验收与交付",
-          "record-acceptance",
-          r?.acceptance || "",
-          "textarea",
-        );
+        if (!simpleProject)
+          field(
+            fields,
+            "验收与交付",
+            "record-acceptance",
+            r?.acceptance || "",
+            "textarea",
+          );
         const rel = el("div", "relation-editor");
         rel.id = "record-relations";
         rel.append(el("p", "field-hint", "项目关系 · 前置依赖需由你确认"));
@@ -769,7 +828,7 @@ export function initStrategyEditor(ctx, common, selectGoal) {
           row.append(label);
           rel.append(row);
         }
-        extra.append(rel);
+        fields.append(rel);
       }
     }
   }
